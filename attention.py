@@ -58,7 +58,7 @@ class AttentionEncoder(hk.Module):
             x = jax.nn.leaky_relu(x)
             x = hk.Linear(skip.shape[-1])(x) + skip
         x = jax.nn.leaky_relu(x)
-        x = hk.Linear(self.out_size)(x)
+        x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
         return x
 
 @jit
