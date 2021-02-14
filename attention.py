@@ -80,7 +80,7 @@ def log_psi(string, loc_dim, params, fwd):
     bs = shape[0]
     zero_spin = jnp.ones((bs, 1, loc_dim))
     inp = jnp.concatenate([zero_spin, jax.nn.one_hot(string, loc_dim)], axis=1)
-    out = fwd.apply(x=inp[:, :-1], params=params)
+    out = fwd(x=inp[:, :-1], params=params)
     logp = out[..., :loc_dim]
     logp = jax.nn.log_softmax(logp)
     logp = 0.5 * (logp * inp[:, 1:]).sum((-2, -1))
@@ -93,7 +93,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
     samples = jnp.ones((num_of_samples, length+1, loc_dim))
     for i in range(length):
         key, subkey = random.split(key)
-        logp = fwd.apply(x=samples[:, :i+1], params=params)[:, i+1, :loc_dim]
+        logp = fwd(x=samples[:, :i+1], params=params)[:, i+1, :loc_dim]
         logp = jax.nn.log_softmax(logp)
         eps = random.gumbel(subkey, logp.shape)
         s = jax.nn.one_hot(jnp.argmax(logp + eps, axis=-1), loc_dim)
