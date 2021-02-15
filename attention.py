@@ -99,3 +99,35 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         s = jax.nn.one_hot(jnp.argmax(logp + eps, axis=-1), loc_dim)
         samples = jax.ops.index_update(samples, jax.ops.index[:, i+1], s)
     return jnp.argmax(samples[:, 1:], -1)
+
+def two_qubit_gate_fidelity(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
+    """Calculates <psi_old|U^dagger|psi_new>
+    
+    Args:
+        params1: py tree, old parameters
+        params2: py tree, new parameters
+        key: PRNGKey
+        gate: complex valued tensor of shape (2, 2, 2, 2)
+        sides: list with two int values representing sides
+            where to apply a gate
+        num_of_samples: int value, number of samples from |psi|^2
+        length: int value, chain length
+        loc_dim: int value, local Hilbert space dimension
+        fwd: neural net
+    
+    Returns:
+        real valued tensor of shape (1,), <psi_old|U^dagger|psi_new>"""
+
+    smpl = sample(num_of_samples, length, loc_dim, params1, fwd, key)
+    pushed_smpl, ampls = push_two_qubit_vec(smpl, gate.transpose((2, 3, 0, 1)).conj(), sides)
+    denom = log_psi(smpl, loc_dim, params1, fwd)
+    nom = log_psi(pushed_smpl.reshape((-1, length)), loc_dim, params2, fwd)
+    log_sq_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
+    phi = nom[1].reshape((-1, 4)) - denom[1][:, jnp.newaxis]
+    re = jnp.exp(2*log_sq_abs) * jnp.cos(phi)
+    im = jnp.exp(2*log_sq_abs) * jnp.sin(phi)
+    ampls_re = jnp.real(ampls)
+    ampls_im = jnp.imag(ampls)
+    re, im = ampls_re * re - ampls_im * im, re * ampls_im + im * ampls_re
+    re, im = pmean(re.sum(1).mean(), axis_name='i'), pmean(im.sum(1).mean(), axis_name='i')
+    return jnp.sqrt(re ** 2 + im ** 2)
