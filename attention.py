@@ -3,6 +3,7 @@ from jax import jit
 from jax import random
 import jax.numpy as jnp
 import haiku as hk
+from utils import push_two_qubit_vec
 
 
 def positional_encoding(T, d):
