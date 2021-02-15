@@ -1,4 +1,5 @@
 import jax
+from jax.lax import pmean
 from jax import jit
 from jax import random
 import jax.numpy as jnp
