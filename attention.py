@@ -102,7 +102,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         samples = jax.ops.index_update(samples, jax.ops.index[:, i+1], s)
     return jnp.argmax(samples[:, 1:], -1)
 
-def two_qubit_gate_fidelity(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
+def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
     """Calculates <psi_old|U^dagger|psi_new>
     
     Args:
@@ -118,7 +118,8 @@ def two_qubit_gate_fidelity(params1, params2, key, gate, sides, num_of_samples, 
         fwd: neural net
     
     Returns:
-        real valued tensor of shape (1,), <psi_old|U^dagger|psi_new>"""
+        two real valued tensors of shape (1,), Re(<psi_old|U^dagger|psi_new>)
+        and Im(<psi_old|U^dagger|psi_new>)"""
 
     smpl = sample(num_of_samples, length, loc_dim, params1, fwd, key)
     pushed_smpl, ampls = push_two_qubit_vec(smpl, gate.transpose((2, 3, 0, 1)).conj(), sides)
@@ -131,5 +132,5 @@ def two_qubit_gate_fidelity(params1, params2, key, gate, sides, num_of_samples, 
     ampls_re = jnp.real(ampls)
     ampls_im = jnp.imag(ampls)
     re, im = ampls_re * re - ampls_im * im, re * ampls_im + im * ampls_re
-    re, im = pmean(re.sum(1).mean(), axis_name='i'), pmean(im.sum(1).mean(), axis_name='i')
-    return jnp.sqrt(re ** 2 + im ** 2)
+    re, im = re.sum(1).mean(), im.sum(1).mean()
+    return re, im
