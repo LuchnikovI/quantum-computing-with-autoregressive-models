@@ -83,13 +83,13 @@ def log_psi(string, loc_dim, params, fwd):
     zero_spin = jnp.ones((bs, 1, loc_dim))
     inp = jnp.concatenate([zero_spin, jax.nn.one_hot(string, loc_dim)], axis=1)
     out = fwd(x=inp[:, :-1], params=params)
-    logp = out[..., :loc_dim]
-    logp = jax.nn.log_softmax(logp)
-    logp = 0.5 * (logp * inp[:, 1:]).sum((-2, -1))
-    logphi = out[..., loc_dim:]
-    logphi = jnp.pi * softsign(logphi)
-    logphi = (logphi * inp[:, 1:]).sum((-2, -1))
-    return logp, logphi
+    logabs = out[..., :loc_dim]
+    logabs = jax.nn.log_softmax(logabs)
+    logabs = 0.5 * (logabs * inp[:, 1:]).sum((-2, -1))
+    phi = out[..., loc_dim:]
+    phi = jnp.pi * softsign(phi)
+    phi = (phi * inp[:, 1:]).sum((-2, -1))
+    return logabs, phi
 
 def sample(num_of_samples, length, loc_dim, params, fwd, key):
     samples = jnp.ones((num_of_samples, length+1, loc_dim))
@@ -125,10 +125,10 @@ def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, le
     pushed_smpl, ampls = push_two_qubit_vec(smpl, gate.transpose((2, 3, 0, 1)).conj(), sides)
     denom = log_psi(smpl, loc_dim, params1, fwd)
     nom = log_psi(pushed_smpl.reshape((-1, length)), loc_dim, params2, fwd)
-    log_sq_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
+    log_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
     phi = nom[1].reshape((-1, 4)) - denom[1][:, jnp.newaxis]
-    re = jnp.exp(2*log_sq_abs) * jnp.cos(phi)
-    im = jnp.exp(2*log_sq_abs) * jnp.sin(phi)
+    re = jnp.exp(log_abs) * jnp.cos(phi)
+    im = jnp.exp(log_abs) * jnp.sin(phi)
     ampls_re = jnp.real(ampls)
     ampls_im = jnp.imag(ampls)
     re, im = ampls_re * re - ampls_im * im, re * ampls_im + im * ampls_re
