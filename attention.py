@@ -27,7 +27,15 @@ def positional_encoding(T, d):
 
 
 class AttentionEncoder(hk.Module):
-    """Class instantiates autoregressive model based on the attention mechanism."""
+    """Haiku model of autoregressive attention.
+        
+    Args:
+        heads_layers: list with number of heads per layer
+        KQ_layers: list with dimensions of key and query per layer
+        V_layers: list with dimensions of value per layer
+        max_length: int, max length of a chain
+        depth: int, the dimension of the input vector at each side
+        name: name of the network"""
 
     def __init__(self,
                  heads_layers,
@@ -36,15 +44,6 @@ class AttentionEncoder(hk.Module):
                  max_length=128,
                  depth=2,
                  name='AttentionEncoder'):
-        """Haiku model of autoregressive attention.
-        
-        Args:
-            heads_layers: list with number of heads per layer
-            KQ_layers: list with dimensions of key and query per layer
-            V_layers: list with dimensions of value per layer
-            max_length: int, max length of a chain
-            depth: int, the dimension of the input vector at each side
-            name: name of the network"""
 
         super().__init__(name=name)
         self.heads_layers = heads_layers  # number of heads per attention layer

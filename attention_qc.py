@@ -6,19 +6,19 @@ import haiku as hk
 from attention import AttentionEncoder, log_psi, sample, two_qubit_gate_braket, train_step
 
 class AttentionQC:
+    """Attention network-based quantum computing emulator
+
+    Args:
+        list_of_heads_sizes: list with number of heads per layer
+        list_of_QK_sizes: list with dimensions of key and query per layer
+        list_of_V_sizes: list with dimensions of value per layer
+        length: int, length of a chain
+        key: PRNGKey
+        loc_dim: the dimension of a local Hilbert space"""
 
     def __init__(self, list_of_heads_sizes,
                  list_of_QK_sizes, list_of_V_sizes,
                  length, key, loc_dim=2):
-        """Attention network-based quantum computing emulator
-
-        Args:
-            list_of_heads_sizes: list with number of heads per layer
-            list_of_QK_sizes: list with dimensions of key and query per layer
-            list_of_V_sizes: list with dimensions of value per layer
-            length: int, length of a chain
-            key: PRNGKey
-            loc_dim: the dimension of a local Hilbert space"""
 
         def _forward(x):
             return AttentionEncoder(list_of_heads_sizes,
