@@ -23,8 +23,7 @@ class AttentionQC:
         def _forward(x):
             return AttentionEncoder(list_of_heads_sizes,
                                     list_of_QK_sizes,
-                                    list_of_V_sizes,
-                                    2 * loc_dim)(x)
+                                    list_of_V_sizes)(x)
         self.num_devices = jax.local_device_count()
         forward = hk.without_apply_rng(hk.transform(_forward))
         params = forward.init(key, random.normal(key, (1, 1, loc_dim)))
