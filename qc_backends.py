@@ -109,7 +109,7 @@ class ExactQCWrapper:
                 first_edge = self.length-1
                 second_edge = self.length-2
             new_ord = tuple(range(min_index)) + (first_edge,) + tuple(range(min_index, max_index-1)) + (second_edge,) + tuple(range(max_index-1, self.length-2))
-            self.state = jnp.tensordot(self.state, gate, axes=[sides, [2, 3]])
+            self.state = jnp.tensordot(self.state, gate, axes=[sides, [3, 2]])
             self.state = self.state.transpose(new_ord)
 
     def get_output_state(self):
