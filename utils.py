@@ -15,14 +15,14 @@ def push_two_qubit(pauli_string, u, sides):
         of shape (4,). The first tensor is pushed pauil string through
         a gate, the second tensor is weights of each string"""
 
-    ind1 = pauli_string[sides[0]]
-    ind2 = pauli_string[sides[1]]
+    ind1 = pauli_string[sides[1]]
+    ind2 = pauli_string[sides[0]]
     not_ind1 = jnp.logical_not(ind1).astype(jnp.int32)
     not_ind2 = jnp.logical_not(ind2).astype(jnp.int32)
     weights = u[ind2, ind1]
-    pauli_string1 = jax.ops.index_update(pauli_string, sides[0], not_ind1)
-    pauli_string2 = jax.ops.index_update(pauli_string, sides[1], not_ind2)
-    pauli_string3 = jax.ops.index_update(pauli_string2, sides[0], not_ind1)
+    pauli_string1 = jax.ops.index_update(pauli_string, sides[1], not_ind1)
+    pauli_string2 = jax.ops.index_update(pauli_string, sides[0], not_ind2)
+    pauli_string3 = jax.ops.index_update(pauli_string2, sides[1], not_ind1)
     pusshed_pauli_strings = jnp.concatenate([pauli_string[jnp.newaxis],
                                              pauli_string1[jnp.newaxis],
                                              pauli_string2[jnp.newaxis],
