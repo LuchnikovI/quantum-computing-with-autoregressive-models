@@ -102,6 +102,11 @@ class AttentionQC:
             l, _, params2, key, state = fori_loop(0, iters, train, (jnp.array(0.), params1, params2, key, state))
             return l / iters, params2, state, key
         self.p_epoch_train = pmap(epoch_train, in_axes=(0, 0, 0, 0, None, None, None, None), static_broadcasted_argnums=(4, 5, 6, 7), axis_name='i')
+
+    def reset_optimizer_state(self):
+        """Resets the optimizer state"""
+        
+        self.state = jax.tree_util.tree_map(pmap(lambda x: jnp.zeros(x.shape)), self.state)
     
     def train_epoch(self, keys, gate, sides, num_of_samples, iters):
         """Trains one epoch
@@ -119,3 +124,8 @@ class AttentionQC:
 
         l, self.params2, self.state, new_keys = self.p_epoch_train(self.params1, self.params2, keys, self.state, gate, sides, num_of_samples, iters)
         return l, new_keys
+    
+    def fix_training_result(self):
+        """Sets value of the old parameters equal to new parameters"""
+
+        self.params1 = self.params2
