@@ -1,6 +1,7 @@
 from attention_qc import AttentionQC
 import jax
 from jax import random
+import jax.numpy as jnp
 
 class NeuralQCWrapper:
     """Wrapper for neural networks based quantum computation.
@@ -69,3 +70,36 @@ class NeuralQCWrapper:
         """Returns log of training"""
 
         return self.training_data
+
+class ExactQCWrapper:
+    """Wrapper for exact simmulation of quantum computations
+
+    Args:
+        length: int, length of a chain"""
+
+    def __init__(self, length):
+        self.state = jnp.ones(2 ** length, dtype=jnp.complex64) / jnp.sqrt(2 ** length)
+        self.state = self.state.reshape(length * (2,))
+        self.circuit = []
+        self.length = length
+    
+    def add_gate(self, gate, sides):
+        """Adds gate to the circuit.
+        
+        Args:
+            gate: complex valued tensor of shape (2, 2, 2, 2)
+            sides: list with two int values showing where to apply a gate"""
+
+        self.circuit.append([gate, sides])
+    
+    def train_qc(self):
+        """Calculates output of a quantum circuit."""
+
+        for layer in self.circuit:
+            gate = layer[0]
+            sides = layer[1]
+            min_index = min(sides)
+            max_index = max(sides)
+            new_ord = tuple(range(min_index)) + (self.length-2,) + tuple(range(min_index, max_index)) + (self.length-1,) + tuple(range(max_index, self.length-2))
+            self.state = jnp.tensordot(self.state, gate, axes=[sides, [2, 3]])
+            self.state = self.state.transpose(new_ord)
