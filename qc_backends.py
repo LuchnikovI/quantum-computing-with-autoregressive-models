@@ -98,9 +98,17 @@ class ExactQCWrapper:
         for layer in self.circuit:
             gate = layer[0]
             sides = layer[1]
-            min_index = min(sides)
-            max_index = max(sides)
-            new_ord = tuple(range(min_index)) + (self.length-2,) + tuple(range(min_index, max_index-1)) + (self.length-1,) + tuple(range(max_index-1, self.length-2))
+            if sides[0] > sides[1]:
+                min_index = min(sides[1])
+                max_index = max(sides[0])
+                first_edge = self.length-2
+                second_edge = self.length-1
+            else:
+                min_index = min(sides[0])
+                max_index = max(sides[1])
+                first_edge = self.length-1
+                second_edge = self.length-2
+            new_ord = tuple(range(min_index)) + (first_edge,) + tuple(range(min_index, max_index-1)) + (second_edge,) + tuple(range(max_index-1, self.length-2))
             self.state = jnp.tensordot(self.state, gate, axes=[sides, [2, 3]])
             self.state = self.state.transpose(new_ord)
 
