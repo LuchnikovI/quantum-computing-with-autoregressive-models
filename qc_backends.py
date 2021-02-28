@@ -103,3 +103,8 @@ class ExactQCWrapper:
             new_ord = tuple(range(min_index)) + (self.length-2,) + tuple(range(min_index, max_index)) + (self.length-1,) + tuple(range(max_index, self.length-2))
             self.state = jnp.tensordot(self.state, gate, axes=[sides, [2, 3]])
             self.state = self.state.transpose(new_ord)
+
+    def get_output_state(self):
+        """Returns output state"""
+
+        return self.state
