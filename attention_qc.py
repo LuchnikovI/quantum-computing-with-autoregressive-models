@@ -106,7 +106,7 @@ class AttentionQC:
     def reset_optimizer_state(self):
         """Resets the optimizer state"""
         
-        self.state = jax.tree_util.tree_map(pmap(lambda x: jnp.zeros(x.shape)), self.state)
+        self.state = jax.tree_util.tree_map(pmap(lambda x: jnp.zeros(x.shape, dtype=x.dtype)), self.state)
     
     def train_epoch(self, keys, gate, sides, num_of_samples, iters):
         """Trains one epoch
