@@ -126,6 +126,37 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         samples = jax.ops.index_update(samples, jax.ops.index[:, i+1], s)
     return jnp.argmax(samples[:, 1:], -1)
 
+    def sample_experimental(num_of_samples, length, loc_dim, params, fwd, key):
+    """Makes samples from |psi|^2, experimental boosted realisation, which needs to be fixed
+
+    Args:
+        num_of_samples: int, number of samples
+        length: int, length of a chain
+        loc_dim: the dimension of a local space
+        params: py tree, parameters of a Haiku model
+        fwd: initialized Haiku model
+        key: PRNGKey
+
+    Returns:
+        int valued tensor of shape (number_of_samples, length)"""
+
+    samples = jnp.ones((num_of_samples, length+1, loc_dim))
+
+    def f(carry, xs):
+        key, i, samples = carry
+        key, subkey = random.split(key)
+        logp = fwd(x=samples[:, :i+1], params=params)[:, i+1, :loc_dim]
+        logp = jax.nn.log_softmax(logp)
+        eps = random.gumbel(subkey, logp.shape)
+        s = jax.nn.one_hot(jnp.argmax(logp + eps, axis=-1), loc_dim)
+        samples = jax.ops.index_update(samples, jax.ops.index[:, i+1], s)
+    return (key, i, samples), None
+
+    carry, _ = scan(f, (key, jnp.array(0, dtype=jnp.int32), samples),
+                    None, length)
+    
+    return jnp.argmax(carry[2][:, 1:], -1)
+
 def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
     """Calculates <psi_old|U^dagger|psi_new>
 
