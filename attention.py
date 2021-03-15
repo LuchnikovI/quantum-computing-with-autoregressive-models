@@ -121,7 +121,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
     def f(carry, xs):
         samples, key, ind = carry
         key, subkey = random.split(key)
-        samples_slice = jax.lax.dynamic_slice(samples, (0, 1+ind, 0), (num_of_samples, 1, loc_dim))
+        samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
         logp = fwd(x=samples_slice, params=params)[:, -1, :loc_dim]
         logp = jax.nn.log_softmax(logp)
         eps = random.gumbel(subkey, logp.shape)
