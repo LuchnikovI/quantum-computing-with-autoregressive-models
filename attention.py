@@ -126,7 +126,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         logp = jax.nn.log_softmax(logp)
         eps = random.gumbel(subkey, logp.shape)
         s = jax.nn.one_hot(jnp.argmax(logp + eps, axis=-1), loc_dim)
-        samples = jax.ops.index_update(samples, jax.ops.index[:, 1+ind], s)
+        samples = jax.ops.index_update(samples, jax.ops.index[:, ind], s)
         return (samples, key, ind+1), None
         
     (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=length)
