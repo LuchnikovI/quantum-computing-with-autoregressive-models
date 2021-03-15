@@ -117,7 +117,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
 
     # TODO check whether one has a problem with PNGKey
     samples = jnp.ones((num_of_samples, length+1, loc_dim))
-    ind = jnp.zeros((1,), dtype=jnp.int32)
+    ind = 0
     def f(carry, xs):
         samples, key, ind = carry
         key, subkey = random.split(key)
