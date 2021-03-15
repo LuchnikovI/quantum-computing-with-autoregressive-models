@@ -129,7 +129,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         ind += 1
         return (samples, key, ind), None
         
-    (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), length=length)
+    (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=length)
     return jnp.argmax(samples[:, 1:], -1)
 
 def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
