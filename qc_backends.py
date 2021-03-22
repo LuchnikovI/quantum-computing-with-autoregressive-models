@@ -2,6 +2,7 @@ from attention_qc import AttentionQC
 import jax
 from jax import random
 import jax.numpy as jnp
+import pickle
 
 class NeuralQCWrapper:
     """Wrapper for neural networks based quantum computation.
@@ -51,7 +52,7 @@ class NeuralQCWrapper:
             iters: int, number of epoch
             number_of_samples: int, number of samples per iteration"""
 
-        for layer in self.circuit:
+        for layer_num, layer in enumerate(self.circuit):
             loss_dynamics = []
             self.key = random.split(self.key)[0]
             keys = random.split(self.key, self.num_devices)
@@ -61,6 +62,9 @@ class NeuralQCWrapper:
             self.qc.reset_optimizer_state()
             self.qc.fix_training_result()
             self.training_data.append({'loss_dynamics': loss_dynamics})
+            print(loss[0])
+            with open('qc_net_' + str(layer_num) + '.pickle', 'wb') as f:
+                pickle.dump([self.qc], f)
     
     def get_network(self):
         """Returns output of a circuit in the form of NN"""
