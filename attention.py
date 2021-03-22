@@ -60,16 +60,17 @@ class AttentionEncoder(hk.Module):
         enc = self.positional_encoding[:length]
         enc = jnp.tile(enc[jnp.newaxis], (shape[0], 1, 1))
         x = jnp.concatenate([x, enc], axis=-1)
-        for heads, KQs, Vs in zip(self.heads_layers,
-                                  self.KQ_layers,
-                                  self.V_layers):
+        for iter, (heads, KQs, Vs) in enumerate(zip(self.heads_layers,
+                                                    self.KQ_layers,
+                                                    self.V_layers)):
             x = hk.MultiHeadAttention(heads, KQs, 1, KQs, Vs)(x, x, x, mask=mask)
-            skip = x
-            x = hk.Linear(skip.shape[-1])(x)
-            x = jax.nn.leaky_relu(x)
-            x = hk.Linear(skip.shape[-1])(x) + skip
-        x = jax.nn.leaky_relu(x)
-        x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
+            if iter == len(self.head_layers)-1:
+                x = jax.nn.elu(x)
+                x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
+            else:
+                skip = x
+                x = jax.nn.elu(x)
+                x = hk.Linear(skip.shape[-1])(x) + skip
         return x
 
 @jit
