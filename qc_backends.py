@@ -4,6 +4,7 @@ from jax import random
 import jax.numpy as jnp
 import pickle
 import time
+from tqdm import tqdm
 
 class NeuralQCWrapper:
     """Wrapper for neural networks based quantum computation.
@@ -58,12 +59,12 @@ class NeuralQCWrapper:
             loss_dynamics = []
             self.key = random.split(self.key)[0]
             keys = random.split(self.key, self.num_devices)
-            for i in range(iters):
+            for i in tqdm(range(iters)):
                 compilation_time = time.time()
                 loss, keys = self.qc.train_epoch(keys, layer[0], layer[1], num_of_samples, epoch_size)
                 loss_dynamics.append(loss[0])
                 if i == 0:
-                    print('Compilation time = ' + str(time.tine() - compilation_time))
+                    print('Compilation time = ' + str(time.time() - compilation_time))
             self.qc.reset_optimizer_state()
             self.qc.fix_training_result()
             self.training_data.append({'loss_dynamics': loss_dynamics})
