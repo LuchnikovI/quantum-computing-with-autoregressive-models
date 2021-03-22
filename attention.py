@@ -67,7 +67,7 @@ class AttentionEncoder(hk.Module):
             if iter == len(self.heads_layers)-1:
                 x = jax.nn.leaky_relu(x, 0.2)
                 #x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
-                hk.Linear(self.out_size)(x)
+                x = hk.Linear(self.out_size)(x)
             else:
                 skip = x
                 x = x = jax.nn.leaky_relu(x, 0.2)
