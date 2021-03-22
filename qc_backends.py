@@ -64,12 +64,12 @@ class NeuralQCWrapper:
                 loss, keys = self.qc.train_epoch(keys, layer[0], layer[1], num_of_samples, epoch_size)
                 loss_dynamics.append(loss[0])
                 if i == 0:
-                    print('Compilation time = ' + str(time.time() - compilation_time))
+                    print(', Compilation time = ' + str(time.time() - compilation_time))
             self.qc.reset_optimizer_state()
             self.qc.fix_training_result()
             self.training_data.append({'loss_dynamics': loss_dynamics})
             print('Gate time = ' + str(time.time() - gate_time))
-            print('Gate #' + str(layer) + ', infidelity = ' + str(loss[0]))
+            print('Gate #' + str(layer_num) + ', infidelity = ' + str(loss[0]))
             with open('qc_net_' + str(layer_num) + '.pickle', 'wb') as f:
                 pickle.dump(self.qc.params1, f)
     
