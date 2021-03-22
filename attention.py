@@ -117,13 +117,19 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
 
     # TODO check whether one has a problem with PNGKey
     samples = jnp.ones((num_of_samples, length+1, loc_dim))
-    for i in range(length):
+    ind = 0
+    def f(carry, xs):
+        samples, key, ind = carry
         key, subkey = random.split(key)
-        logp = fwd(x=samples[:, :i+1], params=params)[:, i+1, :loc_dim]
+        #samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
+        logp = fwd(x=samples, params=params)[:, ind, :loc_dim]
         logp = jax.nn.log_softmax(logp)
         eps = random.gumbel(subkey, logp.shape)
         s = jax.nn.one_hot(jnp.argmax(logp + eps, axis=-1), loc_dim)
-        samples = jax.ops.index_update(samples, jax.ops.index[:, i+1], s)
+        samples = jax.ops.index_update(samples, jax.ops.index[:, ind+1], s)
+        return (samples, key, ind+1), None
+        
+    (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=length)
     return jnp.argmax(samples[:, 1:], -1)
 
 def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
