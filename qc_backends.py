@@ -64,7 +64,7 @@ class NeuralQCWrapper:
             self.training_data.append({'loss_dynamics': loss_dynamics})
             print(loss[0])
             with open('qc_net_' + str(layer_num) + '.pickle', 'wb') as f:
-                pickle.dump([self.qc], f)
+                pickle.dump(self.qc.params1, f)
     
     def get_network(self):
         """Returns output of a circuit in the form of NN"""
