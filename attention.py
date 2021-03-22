@@ -64,7 +64,7 @@ class AttentionEncoder(hk.Module):
                                                     self.KQ_layers,
                                                     self.V_layers)):
             x = hk.MultiHeadAttention(heads, KQs, 1, KQs, Vs)(x, x, x, mask=mask)
-            if iter == len(self.head_layers)-1:
+            if iter == len(self.heads_layers)-1:
                 x = jax.nn.elu(x)
                 x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
             else:
