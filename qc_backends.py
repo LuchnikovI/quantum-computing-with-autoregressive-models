@@ -10,21 +10,21 @@ class NeuralQCWrapper:
     """Wrapper for neural networks based quantum computation.
     
     Args:
-        Args:
-        list_of_heads_sizes: list with number of heads per layer
-        list_of_QK_sizes: list with dimensions of key and query per layer
-        list_of_V_sizes: list with dimensions of value per layer
+        number_of_heads: int number, number of heads in MultiHeadAttention
+        kqv_size: int number, size of key, value and query for all layers
+        number_of_layers: int number, number of layers
         length: int, length of a chain
         key: PRNGKey"""
 
-    def __init__(self, list_of_heads_sizes,
-                 list_of_QK_sizes,
-                 list_of_V_sizes,
+    def __init__(self, number_of_heads,
+                 kqv_size,
+                 number_of_layers,
                  length,
                  key):
-        self.qc = AttentionQC(list_of_heads_sizes,
-                              list_of_QK_sizes,
-                              list_of_V_sizes,
+
+        self.qc = AttentionQC(number_of_heads,
+                              kqv_size,
+                              number_of_layers,
                               length,
                               key)
         self.circuit = []

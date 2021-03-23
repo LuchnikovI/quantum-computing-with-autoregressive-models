@@ -9,21 +9,23 @@ class AttentionQC:
     """Attention network-based quantum computing emulator
 
     Args:
-        list_of_heads_sizes: list with number of heads per layer
-        list_of_QK_sizes: list with dimensions of key and query per layer
-        list_of_V_sizes: list with dimensions of value per layer
-        length: int, length of a chain
+        number_of_heads: int number, number of heads in MultiHeadAttention
+        kqv_size: int number, size of key, value and query for all layers
+        number_of_layers: int number, number of layers
+        length: int number, length of a chain
         key: PRNGKey
-        loc_dim: the dimension of a local Hilbert space"""
+        loc_dim: int number, the dimension of a local Hilbert space"""
 
-    def __init__(self, list_of_heads_sizes,
-                 list_of_QK_sizes, list_of_V_sizes,
+    def __init__(self, number_of_heads,
+                 kqv_size, number_of_layers,
                  length, key, loc_dim=2):
 
         def _forward(x):
-            return AttentionEncoder(list_of_heads_sizes,
-                                    list_of_QK_sizes,
-                                    list_of_V_sizes)(x)
+            return AttentionEncoder(number_of_heads,
+                                    kqv_size,
+                                    number_of_layers,
+                                    depth=loc_dim)(x)
+
         self.num_devices = jax.local_device_count()
         forward = hk.without_apply_rng(hk.transform(_forward))
         params = forward.init(key, random.normal(key, (1, 1, loc_dim)))

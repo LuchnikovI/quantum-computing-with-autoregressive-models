@@ -30,49 +30,69 @@ class AttentionEncoder(hk.Module):
     """Haiku model of autoregressive attention.
         
     Args:
-        heads_layers: list with number of heads per layer
-        KQ_layers: list with dimensions of key and query per layer
-        V_layers: list with dimensions of value per layer
+        number_of_heads: int number, number of heads in MultiHeadAttention
+        kqv_size: int number, size of key, value and query for all layers
+        number_of_layers: int number, number of layers
         max_length: int, max length of a chain
         depth: int, the dimension of the input vector at each side
         name: name of the network"""
 
     def __init__(self,
-                 heads_layers,
-                 KQ_layers,
-                 V_layers,
+                 number_of_heads,
+                 kqv_size,
+                 number_of_layers,
                  max_length=128,
                  depth=2,
                  name='AttentionEncoder'):
 
         super().__init__(name=name)
-        self.heads_layers = heads_layers  # number of heads per attention layer
-        self.KQ_layers = KQ_layers  # size of the key and query per attention layer
-        self.V_layers = V_layers  # size of the value per attention layer
-        self.positional_encoding = positional_encoding(max_length, 4*depth)  # positional encoding
+        self.number_of_heads = number_of_heads
+        self.kqv_size = kqv_size  # size of the key, value and query
+        self.number_of_layers = number_of_layers
+        self.positional_encoding = positional_encoding(max_length, kqv_size * number_of_heads)  # positional encoding
         self.out_size = 2 * depth
+        self.depth = depth
+        self.hidden_size = kqv_size * number_of_heads  # size of hidden representation
         
     def __call__(self, x):
+
+        # build mask necessary for the autoregressive property
         shape = x.shape
         length = shape[-2]
         mask = jnp.ones((length, length))
         mask = jnp.tril(mask, 0)
+        
+        # build embedding of the input seq (depth -> hidden_size)
+        x = hk.Embed(self.depth, self.hidden_size)(x)
+        
+        # + pos. encoding
         enc = self.positional_encoding[:length]
-        enc = jnp.tile(enc[jnp.newaxis], (shape[0], 1, 1))
-        x = jnp.concatenate([x, enc], axis=-1)
-        for iter, (heads, KQs, Vs) in enumerate(zip(self.heads_layers,
-                                                    self.KQ_layers,
-                                                    self.V_layers)):
-            x = hk.MultiHeadAttention(heads, KQs, 1, KQs, Vs)(x, x, x, mask=mask)
-            x = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(x)
-            if iter == len(self.heads_layers)-1:
-                x = jax.nn.leaky_relu(x, 0.2)
-                #x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
-                x = hk.Linear(self.out_size)(x)
-            else:
-                skip = x
-                x = jax.nn.leaky_relu(x, 0.2)
-                x = hk.Linear(skip.shape[-1])(x) + skip
+        x = x + enc
+        
+        # for loop over layers
+        for _ in range(self.number_of_layers):
+            # attention layer
+            skip = x
+            x = hk.MultiHeadAttention(self.number_of_heads,
+                                      self.kqv_size,
+                                      1,
+                                      self.kqv_size,
+                                      self.kqv_size)(x, x, x, mask=mask)
+
+            # add & norm
+            x = hk.LayerNorm(axis=-1, create_scale=False, create_offset=False)(x + skip)
+            
+            # fnn
+            skip = x
+            x = jax.nn.leaky_relu(x, 0.2)
+            x = hk.Linear(self.hidden_size)(x)
+            
+            # add & norm
+            x = hk.LayerNorm(axis=-1, create_scale=False, create_offset=False)(x + skip)
+        
+        # final linear layer
+        x = hk.Linear(self.out_size)(x)
+        
         return x
 
 @jit
@@ -93,8 +113,8 @@ def log_psi(string, loc_dim, params, fwd):
 
     shape = string.shape
     bs = shape[0]
-    zero_spin = jnp.ones((bs, 1, loc_dim))
-    inp = jnp.concatenate([zero_spin, jax.nn.one_hot(string, loc_dim)], axis=1)
+    zero_spin = jnp.ones((bs, 1))
+    inp = jnp.concatenate([zero_spin, string], axis=1)
     out = fwd(x=inp[:, :-1], params=params)
     logabs = out[..., :loc_dim]
     logabs = jax.nn.log_softmax(logabs)
@@ -119,7 +139,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         int valued tensor of shape (number_of_samples, length)"""
 
     # TODO check whether one has a problem with PNGKey
-    samples = jnp.ones((num_of_samples, length+1, loc_dim))
+    samples = jnp.ones((num_of_samples, length+1))
     ind = 0
     def f(carry, xs):
         samples, key, ind = carry
@@ -128,12 +148,12 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         logp = fwd(x=samples, params=params)[:, ind, :loc_dim]
         logp = jax.nn.log_softmax(logp)
         eps = random.gumbel(subkey, logp.shape)
-        s = jax.nn.one_hot(jnp.argmax(logp + eps, axis=-1), loc_dim)
+        s = jnp.argmax(logp + eps, axis=-1)
         samples = jax.ops.index_update(samples, jax.ops.index[:, ind+1], s)
         return (samples, key, ind+1), None
-        
+
     (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=length)
-    return jnp.argmax(samples[:, 1:], -1)
+    return samples[:, 1:]
 
 def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
     """Calculates <psi_old|U^dagger|psi_new>
