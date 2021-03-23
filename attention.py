@@ -113,7 +113,7 @@ def log_psi(string, loc_dim, params, fwd):
 
     shape = string.shape
     bs = shape[0]
-    zero_spin = jnp.ones((bs, 1))
+    zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
     inp = jnp.concatenate([zero_spin, string], axis=1)
     out = fwd(x=inp[:, :-1], params=params)
     logabs = out[..., :loc_dim]
@@ -139,7 +139,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         int valued tensor of shape (number_of_samples, length)"""
 
     # TODO check whether one has a problem with PNGKey
-    samples = jnp.ones((num_of_samples, length+1))
+    samples = jnp.ones((num_of_samples, length+1), dtype=jnp.int32)
     ind = 0
     def f(carry, xs):
         samples, key, ind = carry
