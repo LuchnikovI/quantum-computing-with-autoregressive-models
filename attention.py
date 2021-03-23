@@ -64,13 +64,14 @@ class AttentionEncoder(hk.Module):
                                                     self.KQ_layers,
                                                     self.V_layers)):
             x = hk.MultiHeadAttention(heads, KQs, 1, KQs, Vs)(x, x, x, mask=mask)
+            x = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(x)
             if iter == len(self.heads_layers)-1:
                 x = jax.nn.leaky_relu(x, 0.2)
                 #x = hk.Linear(self.out_size, w_init=hk.initializers.Constant(0))(x)
                 x = hk.Linear(self.out_size)(x)
             else:
                 skip = x
-                x = x = jax.nn.leaky_relu(x, 0.2)
+                x = jax.nn.leaky_relu(x, 0.2)
                 x = hk.Linear(skip.shape[-1])(x) + skip
         return x
 
