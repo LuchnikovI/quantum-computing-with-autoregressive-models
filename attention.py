@@ -90,7 +90,7 @@ class AttentionEncoder(hk.Module):
             x = hk.LayerNorm(axis=-1, create_scale=False, create_offset=False)(x + skip)
         
         # final linear layer
-        x = hk.Linear(self.out_size)(x)
+        x = hk.Linear(self.out_size, w_init=0.)(x)
         
         return x
 
