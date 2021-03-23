@@ -120,7 +120,7 @@ def log_psi(string, loc_dim, params, fwd):
     logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], loc_dim)).sum((-2, -1))
     phi = out[..., loc_dim:]
     phi = jnp.pi * softsign(phi)
-    phi = (phi * inp[:, 1:]).sum((-2, -1))
+    phi = (phi * jax.nn.one_hot(inp[:, 1:], loc_dim)).sum((-2, -1))
     return logabs, phi
 
 def sample(num_of_samples, length, loc_dim, params, fwd, key):
