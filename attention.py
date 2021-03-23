@@ -58,16 +58,15 @@ class AttentionEncoder(hk.Module):
 
         # build mask necessary for the autoregressive property
         shape = x.shape
-        length = shape[-2]
+        length = shape[-1]
         mask = jnp.ones((length, length))
         mask = jnp.tril(mask, 0)
         
-        # build embedding of the input seq (depth -> hidden_size)
+        # build embedding of the input seq
         x = hk.Embed(self.depth, self.hidden_size)(x)
         
         # + pos. encoding
-        enc = self.positional_encoding[:length]
-        x = x + enc
+        x = x + self.positional_encoding[:length]
         
         # for loop over layers
         for _ in range(self.number_of_layers):
