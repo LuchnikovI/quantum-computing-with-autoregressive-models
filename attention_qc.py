@@ -28,7 +28,7 @@ class AttentionQC:
 
         self.num_devices = jax.local_device_count()
         forward = hk.without_apply_rng(hk.transform(_forward))
-        params = forward.init(key, random.normal(key, (1, 1, loc_dim)))
+        params = forward.init(key, jnp.ones(key, (1, 1), dtype=jnp.int32))
         params = jax.tree_util.tree_map(lambda x: jnp.stack([x] * self.num_devices), params)
         self.params1 = pmap(lambda x: x)(params)
         self.params2 = pmap(lambda x: x)(params)
