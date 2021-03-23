@@ -117,7 +117,7 @@ def log_psi(string, loc_dim, params, fwd):
     out = fwd(x=inp[:, :-1], params=params)
     logabs = out[..., :loc_dim]
     logabs = jax.nn.log_softmax(logabs)
-    logabs = 0.5 * (logabs * inp[:, 1:]).sum((-2, -1))
+    logabs = 0.5 * (logabs * jnp.one_hot(inp[:, 1:], loc_dim)).sum((-2, -1))
     phi = out[..., loc_dim:]
     phi = jnp.pi * softsign(phi)
     phi = (phi * inp[:, 1:]).sum((-2, -1))
