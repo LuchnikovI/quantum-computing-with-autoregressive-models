@@ -45,7 +45,7 @@ class AttentionQC:
         self.state = None
         
         def loss_func(params1, params2, key, gate, sides, num_of_samples):
-            re, im = two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd)
+            re, _ = two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd)
             return 1 - re
         loss_and_grad = value_and_grad(loss_func, 1)
         self.train_step = lambda loss, params1, params2, key, state, gate, sides, num_of_samples, opt: train_step(loss, params1, params2, key, state, gate, sides, num_of_samples, opt, loss_and_grad)
