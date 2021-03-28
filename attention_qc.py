@@ -18,32 +18,42 @@ class AttentionWaveFunction:
     Args:
         number_of_heads: number of heads in MultiHeadAttention
         kqv_size: size of key, value and query for all layers
-        number_of_layers: number of layers
-        qubits_num: number of qubits
-        key: PRNGKey
-
-    Returns:
-        network parameters, network and number of qubits"""
+        number_of_layers: number of layers"""
 
     def __init__(self,
                  number_of_heads: int,
                  kqv_size: int,
-                 number_of_layers: int,
-                 qubits_num: int,
-                 key: PRNGKey) -> Tuple[Params, NNet, int]:
+                 number_of_layers: int):
+
+        self._number_of_heads = number_of_heads
+        self._kqv_size = kqv_size
+        self._number_of_layers = number_of_layers
+
+    def init(self,
+             key: PRNGKey,
+             qubits_num: int) -> Tuple[Params, NNet, int]:
+        """Initializes wave function
+
+        Args:
+            key: PRNGKey
+            qubits_num: number of qubits
+
+        Returns:
+            network parameters, network and number of qubits"""
 
         def _forward(x):
-            return AttentionEncoder(number_of_heads,
-                                    kqv_size,
-                                    number_of_layers)(x)
-        
+            return AttentionEncoder(self._number_of_heads,
+                                    self._kqv_size,
+                                    self._number_of_layers)(x)
+
         # attention compilation
         forward = hk.without_apply_rng(hk.transform(_forward))
         params = forward.init(key, jnp.ones((1, 1), dtype=jnp.int32))
         num_devices = jax.local_device_count()
         params = jax.tree_util.tree_map(lambda x: jnp.stack([x] * num_devices), params)
-        
+
         return params, forward.apply, qubits_num
+        
         
     @partial(pmap, in_axes=(None, 0, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 3, 4))
     def sample(self,
