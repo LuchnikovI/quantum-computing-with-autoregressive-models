@@ -165,7 +165,7 @@ class AttentionWaveFunction:
 
         return _log_amplitude(string, wave_function_number, params, fwd, qubits_num)
 
-    @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 3, 5, 7, 8))
+    @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 8))
     def two_qubit_gate_bracket(self,
                                gate: jnp.ndarray,
                                sides: List[int],
@@ -193,22 +193,22 @@ class AttentionWaveFunction:
             two array like of shape (1,)"""
 
         sample = _sample(num_of_samples,
-                              key,
-                              wave_function_numbers[0],
-                              params,
-                              fwd,
-                              qubits_num)
+                         key,
+                         wave_function_numbers[0],
+                         params,
+                         fwd,
+                         qubits_num)
         pushed_sample, ampls = push_two_qubit(sample, gate.transpose((2, 3, 0, 1)).conj(), sides)
         denom = _log_amplitude(sample,
-                                    wave_function_numbers[0],
-                                    params,
-                                    fwd,
-                                    qubits_num)
+                               wave_function_numbers[0],
+                               params,
+                               fwd,
+                               qubits_num)
         nom = _log_amplitude(pushed_sample.reshape((-1, qubits_num)),
-                                  wave_function_numbers[1],
-                                  params,
-                                  fwd,
-                                  qubits_num)
+                             wave_function_numbers[1],
+                             params,
+                             fwd,
+                             qubits_num)
         log_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
         phi = nom[1].reshape((-1, 4)) - denom[1][:, jnp.newaxis]
         re = jnp.exp(log_abs) * jnp.cos(phi)
