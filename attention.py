@@ -34,7 +34,6 @@ class AttentionEncoder(hk.Module):
         kqv_size: int number, size of key, value and query for all layers
         number_of_layers: int number, number of layers
         max_length: int, max length of a chain
-        depth: int, the dimension of the input vector at each side
         name: name of the network"""
 
     def __init__(self,
@@ -42,7 +41,6 @@ class AttentionEncoder(hk.Module):
                  kqv_size,
                  number_of_layers,
                  max_length=128,
-                 depth=2,
                  name='AttentionEncoder'):
 
         super().__init__(name=name)
@@ -50,8 +48,7 @@ class AttentionEncoder(hk.Module):
         self.kqv_size = kqv_size  # size of the key, value and query
         self.number_of_layers = number_of_layers
         self.positional_encoding = positional_encoding(max_length, kqv_size * number_of_heads)  # positional encoding
-        self.out_size = 2 * depth
-        self.depth = depth
+        self.out_size = 4
         self.hidden_size = kqv_size * number_of_heads  # size of hidden representation
         
     def __call__(self, x):
@@ -63,7 +60,7 @@ class AttentionEncoder(hk.Module):
         mask = jnp.tril(mask, 0)
         
         # build embedding of the input seq
-        x = hk.Embed(self.depth, self.hidden_size)(x)
+        x = hk.Embed(2, self.hidden_size)(x)
         
         # + pos. encoding
         x = x + self.positional_encoding[:length]
@@ -94,16 +91,17 @@ class AttentionEncoder(hk.Module):
         
         return x
 
+
 @jit
 def softsign(x):
     return x / (1 + jnp.abs(x))
 
-def log_psi(string, loc_dim, params, fwd):
+
+def log_psi(string, params, fwd):
     """Returns real and imag parts of log(psi)
 
     Args:
         string: int valued tensor of shape (bs, length)
-        loc_dim: int value, local Hilbert space dimension
         params: py tree, parameters of a Haiku model
         fwd: initialized Haiku model
 
@@ -115,21 +113,21 @@ def log_psi(string, loc_dim, params, fwd):
     zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
     inp = jnp.concatenate([zero_spin, string], axis=1)
     out = fwd(x=inp[:, :-1], params=params)
-    logabs = out[..., :loc_dim]
+    logabs = out[..., :2]
     logabs = jax.nn.log_softmax(logabs)
-    logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], loc_dim)).sum((-2, -1))
-    phi = out[..., loc_dim:]
+    logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+    phi = out[..., 2:]
     phi = jnp.pi * softsign(phi)
-    phi = (phi * jax.nn.one_hot(inp[:, 1:], loc_dim)).sum((-2, -1))
+    phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
     return logabs, phi
 
-def sample(num_of_samples, length, loc_dim, params, fwd, key):
+
+def sample(num_of_samples, length, params, fwd, key):
     """Makes samples from |psi|^2
 
     Args:
         num_of_samples: int, number of samples
         length: int, length of a chain
-        loc_dim: the dimension of a local space
         params: py tree, parameters of a Haiku model
         fwd: initialized Haiku model
         key: PRNGKey
@@ -144,7 +142,7 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
         samples, key, ind = carry
         key, subkey = random.split(key)
         #samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
-        logp = fwd(x=samples, params=params)[:, ind, :loc_dim]
+        logp = fwd(x=samples, params=params)[:, ind, :2]
         logp = jax.nn.log_softmax(logp)
         eps = random.gumbel(subkey, logp.shape)
         s = jnp.argmax(logp + eps, axis=-1)
@@ -154,7 +152,8 @@ def sample(num_of_samples, length, loc_dim, params, fwd, key):
     (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=length)
     return samples[:, 1:]
 
-def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd):
+
+def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, fwd):
     """Calculates <psi_old|U^dagger|psi_new>
 
     Args:
@@ -166,17 +165,16 @@ def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, le
             where to apply a gate
         num_of_samples: int value, number of samples from |psi|^2
         length: int value, chain length
-        loc_dim: int value, local Hilbert space dimension
         fwd: neural net
 
     Returns:
         two real valued tensors of shape (1,), Re(<psi_old|U^dagger|psi_new>)
         and Im(<psi_old|U^dagger|psi_new>)"""
 
-    smpl = sample(num_of_samples, length, loc_dim, params1, fwd, key)
+    smpl = sample(num_of_samples, length, params1, fwd, key)
     pushed_smpl, ampls = push_two_qubit_vec(smpl, gate.transpose((2, 3, 0, 1)).conj(), sides)
-    denom = log_psi(smpl, loc_dim, params1, fwd)
-    nom = log_psi(pushed_smpl.reshape((-1, length)), loc_dim, params2, fwd)
+    denom = log_psi(smpl, params1, fwd)
+    nom = log_psi(pushed_smpl.reshape((-1, length)), params2, fwd)
     log_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
     phi = nom[1].reshape((-1, 4)) - denom[1][:, jnp.newaxis]
     re = jnp.exp(log_abs) * jnp.cos(phi)
@@ -186,6 +184,7 @@ def two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, le
     re, im = ampls_re * re - ampls_im * im, re * ampls_im + im * ampls_re
     re, im = re.sum(1).mean(), im.sum(1).mean()
     return re, im
+
 
 def train_step(loss, params1,
                params2, key,
@@ -210,8 +209,8 @@ def train_step(loss, params1,
 
     Returns:
         new value of loss, py tree with old parameters, py tree with updated
-        new parameters, new PRNGKey, new py tree with state of an optimizer
-        """
+        new parameters, new PRNGKey, new py tree with state of an optimizer"""
+
     key = random.split(key)[0]
     l, grad = loss_and_grad(params1, params2, key, gate, sides, num_of_samples)
     l = pmean(l, axis_name='i')

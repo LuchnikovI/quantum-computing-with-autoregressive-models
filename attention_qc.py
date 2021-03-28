@@ -1,137 +1,112 @@
 import jax
-from jax import jit, random, pmap, value_and_grad
-from jax.lax import fori_loop
+from jax import random, pmap
 import jax.numpy as jnp
 import haiku as hk
-from attention import AttentionEncoder, log_psi, sample, two_qubit_gate_braket, train_step
+from attention import AttentionEncoder
+from utils import softsign
+from typing import Mapping, Tuple, Callable
+from functools import partial
 
-class AttentionQC:
-    """Attention network-based quantum computing emulator
+Params = Mapping[str, Mapping[str, jnp.ndarray]]
+PRNGKey = jnp.ndarray
+NNet = Callable[[jnp.ndarray, Params], jnp.ndarray]  # Neural network type
+
+
+class AttentionWaveFunction:
+    """Attention network-based wave function
 
     Args:
-        number_of_heads: int number, number of heads in MultiHeadAttention
-        kqv_size: int number, size of key, value and query for all layers
-        number_of_layers: int number, number of layers
-        length: int number, length of a chain
+        number_of_heads: number of heads in MultiHeadAttention
+        kqv_size: size of key, value and query for all layers
+        number_of_layers: number of layers
+        qubits_num: number of qubits
         key: PRNGKey
-        loc_dim: int number, the dimension of a local Hilbert space"""
 
-    def __init__(self, number_of_heads,
-                 kqv_size, number_of_layers,
-                 length, key, loc_dim=2):
+    Returns:
+        network parameters, network and number of qubits"""
+
+    def __init__(self,
+                 number_of_heads: int,
+                 kqv_size: int,
+                 number_of_layers: int,
+                 qubits_num: int,
+                 key: PRNGKey) -> Tuple[Params, NNet, int]:
 
         def _forward(x):
             return AttentionEncoder(number_of_heads,
                                     kqv_size,
-                                    number_of_layers,
-                                    depth=loc_dim)(x)
-
-        self.num_devices = jax.local_device_count()
+                                    number_of_layers)(x)
+        
+        # attention compilation
         forward = hk.without_apply_rng(hk.transform(_forward))
         params = forward.init(key, jnp.ones((1, 1), dtype=jnp.int32))
-        params = jax.tree_util.tree_map(lambda x: jnp.stack([x] * self.num_devices), params)
-        self.params1 = pmap(lambda x: x)(params)
-        self.params2 = pmap(lambda x: x)(params)
-        fwd = jit(forward.apply)
+        num_devices = jax.local_device_count()
+        params = jax.tree_util.tree_map(lambda x: jnp.stack([x] * num_devices), params)
         
-        self.logpsi = pmap(lambda string, params: log_psi(string, loc_dim, params, fwd))
+        return params, forward.apply, qubits_num
         
-        self.smpl = pmap(lambda num_of_samples, params, key: sample(num_of_samples, length, loc_dim, params, fwd, key), in_axes=(None, 0, 0), static_broadcasted_argnums=0)
-        
-        self.braket = pmap(lambda params1, params2, key, gate, sides, num_of_samples: two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd), in_axes=(0, 0, 0, None, None, None), static_broadcasted_argnums=(3, 4, 5))
-        
-        self.opt = None
-        
-        self.state = None
-        
-        def loss_func(params1, params2, key, gate, sides, num_of_samples):
-            re, im = two_qubit_gate_braket(params1, params2, key, gate, sides, num_of_samples, length, loc_dim, fwd)
-            return 1 - re
-        loss_and_grad = value_and_grad(loss_func, 1)
-        self.train_step = lambda loss, params1, params2, key, state, gate, sides, num_of_samples, opt: train_step(loss, params1, params2, key, state, gate, sides, num_of_samples, opt, loss_and_grad)
-        
-        self.p_epoch_train = None
-
-    def sample(self, num_of_samples, keys):
-        """Makes samples from |psi|^2, (parallel on TPU kers or GPUs)
-        
-        Args:
-            num_of_samples: int, number of samples
-            keys: PRNGKeys distributed across devices
-
-        Returns:
-            real valued tensor of shape (num_of_devices, num_of_samples, length)"""
-
-        return self.smpl(num_of_samples, self.params2, keys)
-    
-    def log_psi(self, string):
-        """Returns real and imag parts of log(psi), (parallel on TPU kers or GPUs)
+    @partial(pmap, in_axes=(None, 0, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 3, 4))
+    def sample(self,
+               num_of_samples: int,
+               key: PRNGKey,
+               params: Params,
+               fwd: NNet,
+               qubits_num: int) -> jnp.array:
+        """Return samples from wave function.
 
         Args:
-            string: int valued tensor of shape (bs, length)
-    
+            num_of_samples: number of samples
+            key: PRNGKey
+            state: state
+            fwd: network
+            qubits_num: number of qubits
+
         Returns:
-            two tensors of shape (num_of_devices, bs)"""
+            (num_of_samples, length) array like"""
 
-        return self.logpsi(string, self.params2)
+        # TODO check whether one has a problem with PRNGKey splitting
+        samples = jnp.ones((num_of_samples, qubits_num+1), dtype=jnp.int32)
+        ind = 0
+        def f(carry, xs):
+            samples, key, ind = carry
+            key, subkey = random.split(key)
+            #samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
+            logp = fwd(x=samples, params=params)[:, ind, :2]
+            logp = jax.nn.log_softmax(logp)
+            eps = random.gumbel(subkey, logp.shape)
+            s = jnp.argmax(logp + eps, axis=-1)
+            samples = jax.ops.index_update(samples, jax.ops.index[:, ind+1], s)
+            return (samples, key, ind+1), None
 
-    def gate_braket(self, num_of_samples, gate, sides, keys):
-        """Returns <psi_old|gate^dagger|psi_new>
+        (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
+        return samples[:, 1:]
+
+    @partial(pmap, in_axes=(0, 0, None, None), out_axes=0, static_broadcasted_argnums=(2, 3))
+    def log_psi(self,
+                string: jnp.ndarray,
+                params: Params,
+                fwd: NNet,
+                qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Return log(wave_function) for given set of bit strings.
 
         Args:
-            num_of_samples: int, number of samples
-            gate: complex valued tensor of shape (2, 2, 2, 2)
-            sides: list with to ints representing sides where to apply
-                a gate
-            keys: PRNGKeys distributed across devices
+            string: (num_of_samples, length) array like
+            state: state
+            fwd: network
+            qubits_num: number of qubits
 
         Returns:
-            two real valued tensors of shape (num_of_devices,),
-            Re(<psi_old|U^dagger|psi_new>) and Im(<psi_old|U^dagger|psi_new>)"""
+            two array like (num_of_samples,) -- log of absolut value and phase"""
 
-        return self.braket(self.params1, self.params2, keys, gate, sides, num_of_samples)
-
-    def set_optimizer(self, opt):
-        """Sets an optax optimizer"""
-
-        self.opt = opt
-        state = self.opt.init(jax.tree_util.tree_map(lambda x: x[0], self.params2))
-        state = jax.tree_util.tree_map(lambda x: jnp.stack([x] * self.num_devices), state)
-        state = pmap(lambda x: x)(state)
-        self.state = state
-        def epoch_train(params1, params2, key, state, gate, sides, num_of_samples, iters):
-            train = lambda i, vals: self.train_step(*vals, gate, sides, num_of_samples, opt)
-            l, _, params2, key, state = fori_loop(0, iters, train, (jnp.array(0.), params1, params2, key, state))
-            return l / iters, params2, state, key
-        self.p_epoch_train = pmap(epoch_train, in_axes=(0, 0, 0, 0, None, None, None, None), static_broadcasted_argnums=(4, 5, 6, 7), axis_name='i')
-
-    def reset_optimizer_state(self):
-        """Resets the optimizer state"""
-        
-        # self.state = jax.tree_util.tree_map(pmap(lambda x: jnp.zeros(x.shape, dtype=x.dtype)), self.state)
-        state = self.opt.init(jax.tree_util.tree_map(lambda x: x[0], self.params2))
-        state = jax.tree_util.tree_map(lambda x: jnp.stack([x] * self.num_devices), state)
-        state = pmap(lambda x: x)(state)
-        self.state = state
-    
-    def train_epoch(self, keys, gate, sides, num_of_samples, iters):
-        """Trains one epoch
-
-        Args:
-            keys: PRNGKeys distributed across devices
-            gate: complex valued tensor of shape (2, 2, 2, 2)
-            sides: list with to ints representing sides where to apply
-                a gate
-            num_of_samples: int, number of samples
-            iters: int, number of iterations within one epoch
-
-        Returns:
-            value of a loss function and new PRNGKeys distributed across devices"""
-
-        l, self.params2, self.state, new_keys = self.p_epoch_train(self.params1, self.params2, keys, self.state, gate, sides, num_of_samples, iters)
-        return l, new_keys
-    
-    def fix_training_result(self):
-        """Sets value of the old parameters equal to new parameters"""
-
-        self.params1 = self.params2
+        shape = string.shape
+        bs = shape[0]
+        zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
+        inp = jnp.concatenate([zero_spin, string], axis=1)
+        out = fwd(x=inp[:, :-1], params=params)
+        logabs = out[..., :2]
+        logabs = jax.nn.log_softmax(logabs)
+        logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+        phi = out[..., 2:]
+        phi = jnp.pi * softsign(phi)
+        phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+        return logabs, phi

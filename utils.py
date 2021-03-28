@@ -56,3 +56,7 @@ def push_one_qubit(pauli_string, u, side):
     return pusshed_pauli_strings, weights
 
 push_one_qubit_vec = jit(vmap(push_one_qubit, (0, None, None), (0, 0)))
+
+@jit
+def softsign(x):
+    return x / (1 + jnp.abs(x))
