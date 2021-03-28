@@ -8,6 +8,74 @@ from typing import Tuple, List
 from functools import partial
 
 
+def _sample(num_of_samples: int,
+            key: PRNGKey,
+            wave_function_number: int,
+            params: List[Params],
+            fwd: NNet,
+            qubits_num: int) -> jnp.array:
+    """Return samples from the wave function.
+
+    Args:
+        num_of_samples: number of samples
+        key: PRNGKey
+        wave_function_number: number of a wave function to sample from
+        params: parameters
+        fwd: network
+        qubits_num: number of qubits
+
+    Returns:
+        (num_of_samples, length) array like"""
+
+    # TODO check whether one has a problem with PRNGKey splitting
+    samples = jnp.ones((num_of_samples, qubits_num+1), dtype=jnp.int32)
+    ind = 0
+    def f(carry, xs):
+        samples, key, ind = carry
+        key, subkey = random.split(key)
+        #samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
+        logp = fwd(x=samples, params=params[wave_function_number])[:, ind, :2]
+        logp = jax.nn.log_softmax(logp)
+        eps = random.gumbel(subkey, logp.shape)
+        s = jnp.argmax(logp + eps, axis=-1)
+        samples = jax.ops.index_update(samples, jax.ops.index[:, ind+1], s)
+        return (samples, key, ind+1), None
+
+    (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
+    return samples[:, 1:]
+
+
+def _log_amplitude(string: jnp.ndarray,
+                   wave_function_number: int,
+                   params: List[Params],
+                   fwd: NNet,
+                   qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Return log(wave function) for a given set of bit strings.
+
+    Args:
+        string: (num_of_samples, length) array like
+        wave_function_number: number of a wave function to evaluate
+        params: parameters
+        fwd: network
+        qubits_num: number of qubits
+
+    Returns:
+        two array like (num_of_samples,) -- log of absolut value and phase"""
+
+    shape = string.shape
+    bs = shape[0]
+    zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
+    inp = jnp.concatenate([zero_spin, string], axis=1)
+    out = fwd(x=inp[:, :-1], params=params[wave_function_number])
+    logabs = out[..., :2]
+    logabs = jax.nn.log_softmax(logabs)
+    logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+    phi = out[..., 2:]
+    phi = jnp.pi * softsign(phi)
+    phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+    return logabs, phi
+
+
 class AttentionWaveFunction:
     """Attention network-based wave function
 
@@ -53,74 +121,6 @@ class AttentionWaveFunction:
 
         return self._number_of_wave_functions*[params], forward.apply, qubits_num
 
-    def _sample(self,
-               num_of_samples: int,
-               key: PRNGKey,
-               wave_function_number: int,
-               params: List[Params],
-               fwd: NNet,
-               qubits_num: int) -> jnp.array:
-        """Return samples from the wave function.
-
-        Args:
-            num_of_samples: number of samples
-            key: PRNGKey
-            wave_function_number: number of a wave function to sample from
-            params: parameters
-            fwd: network
-            qubits_num: number of qubits
-
-        Returns:
-            (num_of_samples, length) array like"""
-
-        # TODO check whether one has a problem with PRNGKey splitting
-        samples = jnp.ones((num_of_samples, qubits_num+1), dtype=jnp.int32)
-        ind = 0
-        def f(carry, xs):
-            samples, key, ind = carry
-            key, subkey = random.split(key)
-            #samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
-            logp = fwd(x=samples, params=params[wave_function_number])[:, ind, :2]
-            logp = jax.nn.log_softmax(logp)
-            eps = random.gumbel(subkey, logp.shape)
-            s = jnp.argmax(logp + eps, axis=-1)
-            samples = jax.ops.index_update(samples, jax.ops.index[:, ind+1], s)
-            return (samples, key, ind+1), None
-
-        (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
-        return samples[:, 1:]
-
-    def _log_amplitude(self,
-                       string: jnp.ndarray,
-                       wave_function_number: int,
-                       params: List[Params],
-                       fwd: NNet,
-                       qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        """Return log(wave function) for a given set of bit strings.
-
-        Args:
-            string: (num_of_samples, length) array like
-            wave_function_number: number of a wave function to evaluate
-            params: parameters
-            fwd: network
-            qubits_num: number of qubits
-
-        Returns:
-            two array like (num_of_samples,) -- log of absolut value and phase"""
-
-        shape = string.shape
-        bs = shape[0]
-        zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
-        inp = jnp.concatenate([zero_spin, string], axis=1)
-        out = fwd(x=inp[:, :-1], params=params[wave_function_number])
-        logabs = out[..., :2]
-        logabs = jax.nn.log_softmax(logabs)
-        logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
-        phi = out[..., 2:]
-        phi = jnp.pi * softsign(phi)
-        phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
-        return logabs, phi
-
     @partial(pmap, in_axes=(None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 3, 5, 6))
     def sample(self,
                num_of_samples: int,
@@ -142,7 +142,7 @@ class AttentionWaveFunction:
         Returns:
             (num_of_samples, length) array like"""
 
-        return self._sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
+        return _sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap, in_axes=(None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 4, 5))
     def log_amplitude(self,
@@ -163,7 +163,7 @@ class AttentionWaveFunction:
         Returns:
             two array like (num_of_samples,) -- log of absolut value and phase"""
 
-        return self._log_amplitude(string, wave_function_number, params, fwd, qubits_num)
+        return _log_amplitude(string, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 3, 5, 7, 8))
     def two_qubit_gate_bracket(self,
@@ -192,19 +192,19 @@ class AttentionWaveFunction:
         Returns:
             two array like of shape (1,)"""
 
-        sample = self._sample(num_of_samples,
+        sample = _sample(num_of_samples,
                               key,
                               wave_function_numbers[0],
                               params,
                               fwd,
                               qubits_num)
         pushed_sample, ampls = push_two_qubit(sample, gate.transpose((2, 3, 0, 1)).conj(), sides)
-        denom = self._log_amplitude(sample,
+        denom = _log_amplitude(sample,
                                     wave_function_numbers[0],
                                     params,
                                     fwd,
                                     qubits_num)
-        nom = self._log_amplitude(pushed_sample.reshape((-1, qubits_num)),
+        nom = _log_amplitude(pushed_sample.reshape((-1, qubits_num)),
                                   wave_function_numbers[1],
                                   params,
                                   fwd,
