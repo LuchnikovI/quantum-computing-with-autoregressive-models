@@ -53,8 +53,7 @@ class AttentionWaveFunction:
 
         return self._number_of_wave_functions*[params], forward.apply, qubits_num
 
-    @partial(pmap, in_axes=(None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 3, 5, 6))
-    def sample(self,
+    def _sample(self,
                num_of_samples: int,
                key: PRNGKey,
                wave_function_number: int,
@@ -91,13 +90,12 @@ class AttentionWaveFunction:
         (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
         return samples[:, 1:]
 
-    @partial(pmap, in_axes=(None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 4, 5))
-    def log_amplitude(self,
-                string: jnp.ndarray,
-                wave_function_number: int,
-                params: List[Params],
-                fwd: NNet,
-                qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def _log_amplitude(self,
+                       string: jnp.ndarray,
+                       wave_function_number: int,
+                       params: List[Params],
+                       fwd: NNet,
+                       qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Return log(wave function) for a given set of bit strings.
 
         Args:
@@ -122,6 +120,50 @@ class AttentionWaveFunction:
         phi = jnp.pi * softsign(phi)
         phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
         return logabs, phi
+
+    @partial(pmap, in_axes=(None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 3, 5, 6))
+    def sample(self,
+               num_of_samples: int,
+               key: PRNGKey,
+               wave_function_number: int,
+               params: List[Params],
+               fwd: NNet,
+               qubits_num: int) -> jnp.array:
+        """Return samples from the wave function.
+
+        Args:
+            num_of_samples: number of samples
+            key: PRNGKey
+            wave_function_number: number of a wave function to sample from
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+
+        Returns:
+            (num_of_samples, length) array like"""
+
+        return self._sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
+
+    @partial(pmap, in_axes=(None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 4, 5))
+    def log_amplitude(self,
+                      string: jnp.ndarray,
+                      wave_function_number: int,
+                      params: List[Params],
+                      fwd: NNet,
+                      qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Return log(wave function) for a given set of bit strings.
+
+        Args:
+            string: (num_of_samples, length) array like
+            wave_function_number: number of a wave function to evaluate
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+
+        Returns:
+            two array like (num_of_samples,) -- log of absolut value and phase"""
+
+        return self._log_amplitude(string, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 3, 5, 7, 8))
     def two_qubit_gate_bracket(self,
@@ -150,23 +192,23 @@ class AttentionWaveFunction:
         Returns:
             two array like of shape (1,)"""
 
-        sample = self.sample(num_of_samples,
-                             key,
-                             wave_function_numbers[0],
-                             params,
-                             fwd,
-                             qubits_num)
+        sample = self._sample(num_of_samples,
+                              key,
+                              wave_function_numbers[0],
+                              params,
+                              fwd,
+                              qubits_num)
         pushed_sample, ampls = push_two_qubit(sample, gate.transpose((2, 3, 0, 1)).conj(), sides)
-        denom = self.log_amplitude(sample,
-                                   wave_function_numbers[0],
-                                   params,
-                                   fwd,
-                                   qubits_num)
-        nom = self.log_amplitude(pushed_sample,
-                                 wave_function_numbers[1],
-                                 params,
-                                 fwd,
-                                 qubits_num)
+        denom = self._log_amplitude(sample,
+                                    wave_function_numbers[0],
+                                    params,
+                                    fwd,
+                                    qubits_num)
+        nom = self._log_amplitude(pushed_sample,
+                                  wave_function_numbers[1],
+                                  params,
+                                  fwd,
+                                  qubits_num)
         log_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
         phi = nom[1].reshape((-1, 4)) - denom[1][:, jnp.newaxis]
         re = jnp.exp(log_abs) * jnp.cos(phi)
