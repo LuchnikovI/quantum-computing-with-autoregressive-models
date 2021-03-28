@@ -2,7 +2,9 @@ import jax.numpy as jnp
 import jax
 from jax import vmap, jit
 from typing import Mapping, Callable
+from functools import partial
 
+@partial(vmap, in_axes=(0, None, None))
 def push_two_qubit(pauli_string, u, sides):
     """Pushes pauli string through a two-qubit quantum gate.
 
@@ -32,8 +34,8 @@ def push_two_qubit(pauli_string, u, sides):
                       (ind1, not_ind1, ind1, not_ind1)]
     return pusshed_pauli_strings, weights
 
-push_two_qubit_vec = vmap(push_two_qubit, (0, None, None), (0, 0))
 
+@partial(vmap, in_axes=(0, None, None))
 def push_one_qubit(pauli_string, u, side):
     """Pushes pauli string through a one-qubit quantum gate.
 
@@ -55,8 +57,6 @@ def push_one_qubit(pauli_string, u, side):
                                              pauli_string1[jnp.newaxis]], axis=0)
     weights = jnp.array([weights[ind], weights[not_ind]])
     return pusshed_pauli_strings, weights
-
-push_one_qubit_vec = vmap(push_one_qubit, (0, None, None), (0, 0))
 
 @jit
 def softsign(x):

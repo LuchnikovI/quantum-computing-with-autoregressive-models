@@ -1,10 +1,11 @@
 import jax
-from jax import random
+from jax import random, pmap
 import jax.numpy as jnp
 import haiku as hk
 from attention import AttentionEncoder
-from utils import push_two_qubit_vec, softsign, Params, PRNGKey, NNet
+from utils import push_two_qubit, softsign, Params, PRNGKey, NNet
 from typing import Tuple, List
+from functools import partial
 
 
 class AttentionWaveFunction:
@@ -47,9 +48,12 @@ class AttentionWaveFunction:
         # attention compilation
         forward = hk.without_apply_rng(hk.transform(_forward))
         params = forward.init(key, jnp.ones((1, 1), dtype=jnp.int32))
+        num_devices = jax.local_device_count()
+        params = jax.tree_util.tree_map(lambda x: jnp.stack([x] * num_devices), params)
 
         return self._number_of_wave_functions*[params], forward.apply, qubits_num
 
+    @partial(pmap, in_axes=(None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 3, 5, 6))
     def sample(self,
                num_of_samples: int,
                key: PRNGKey,
@@ -87,6 +91,7 @@ class AttentionWaveFunction:
         (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
         return samples[:, 1:]
 
+    @partial(pmap, in_axes=(None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 4, 5))
     def log_amplitude(self,
                 string: jnp.ndarray,
                 wave_function_number: int,
@@ -118,6 +123,7 @@ class AttentionWaveFunction:
         phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
         return logabs, phi
 
+    @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 3, 5, 7, 8))
     def two_qubit_gate_bracket(self,
                                gate: jnp.ndarray,
                                sides: List[int],
@@ -150,7 +156,7 @@ class AttentionWaveFunction:
                              params,
                              fwd,
                              qubits_num)
-        pushed_sample, ampls = push_two_qubit_vec(sample, gate.transpose((2, 3, 0, 1)).conj(), sides)
+        pushed_sample, ampls = push_two_qubit(sample, gate.transpose((2, 3, 0, 1)).conj(), sides)
         denom = self.log_amplitude(sample,
                                    wave_function_numbers[0],
                                    params,
