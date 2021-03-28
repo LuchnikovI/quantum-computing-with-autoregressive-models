@@ -55,7 +55,7 @@ class AttentionWaveFunction:
         return params, forward.apply, qubits_num
         
         
-    @partial(pmap, in_axes=(None, 0, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 3, 4))
+    @partial(pmap, in_axes=(None, None, 0, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 4, 5))
     def sample(self,
                num_of_samples: int,
                key: PRNGKey,
@@ -91,7 +91,7 @@ class AttentionWaveFunction:
         (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
         return samples[:, 1:]
 
-    @partial(pmap, in_axes=(0, 0, None, None), out_axes=0, static_broadcasted_argnums=(2, 3))
+    @partial(pmap, in_axes=(None, 0, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 3, 4))
     def log_psi(self,
                 string: jnp.ndarray,
                 params: Params,
