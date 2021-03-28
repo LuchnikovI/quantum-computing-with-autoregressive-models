@@ -204,7 +204,7 @@ class AttentionWaveFunction:
                                     params,
                                     fwd,
                                     qubits_num)
-        nom = self._log_amplitude(pushed_sample,
+        nom = self._log_amplitude(pushed_sample.reshape((-1, qubits_num)),
                                   wave_function_numbers[1],
                                   params,
                                   fwd,
