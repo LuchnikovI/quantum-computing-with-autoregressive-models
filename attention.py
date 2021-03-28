@@ -71,9 +71,7 @@ class AttentionEncoder(hk.Module):
             skip = x
             x = hk.MultiHeadAttention(self.number_of_heads,
                                       self.kqv_size,
-                                      1,
-                                      self.kqv_size,
-                                      self.kqv_size)(x, x, x, mask=mask)
+                                      1)(x, x, x, mask=mask)
 
             # add & norm
             x = hk.LayerNorm(axis=-1, create_scale=False, create_offset=False)(x + skip)
