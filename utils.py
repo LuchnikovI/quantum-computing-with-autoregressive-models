@@ -1,8 +1,14 @@
 import jax.numpy as jnp
 import jax
-from jax import vmap, jit
-from typing import Mapping, Callable
+from jax import vmap, random
+from typing import Mapping, Callable, List, Tuple
 from functools import partial
+
+
+Params = Mapping[str, Mapping[str, jnp.ndarray]]  # Neural network params type
+PRNGKey = jnp.ndarray
+NNet = Callable[[jnp.ndarray, Params], jnp.ndarray]  # Neural network type
+
 
 @partial(vmap, in_axes=(0, None, None))
 def push_two_qubit(pauli_string, u, sides):
@@ -58,10 +64,126 @@ def push_one_qubit(pauli_string, u, side):
     weights = jnp.array([weights[ind], weights[not_ind]])
     return pusshed_pauli_strings, weights
 
-@jit
+
 def softsign(x):
     return x / (1 + jnp.abs(x))
 
-Params = Mapping[str, Mapping[str, jnp.ndarray]]  # Neural network params type
-PRNGKey = jnp.ndarray
-NNet = Callable[[jnp.ndarray, Params], jnp.ndarray]  # Neural network type
+
+def _sample(num_of_samples: int,
+            key: PRNGKey,
+            wave_function_number: int,
+            params: List[Params],
+            fwd: NNet,
+            qubits_num: int) -> jnp.array:
+    """Return samples from the wave function.
+
+    Args:
+        num_of_samples: number of samples
+        key: PRNGKey
+        wave_function_number: number of a wave function to sample from
+        params: parameters
+        fwd: network
+        qubits_num: number of qubits
+
+    Returns:
+        (num_of_samples, length) array like"""
+
+    # TODO check whether one has a problem with PRNGKey splitting
+    samples = jnp.ones((num_of_samples, qubits_num+1), dtype=jnp.int32)
+    ind = 0
+    def f(carry, xs):
+        samples, key, ind = carry
+        key, subkey = random.split(key)
+        #samples_slice = jax.lax.dynamic_slice(samples, (0, 0, 0), (num_of_samples, 1+ind, loc_dim))
+        logp = fwd(x=samples, params=params[wave_function_number])[:, ind, :2]
+        logp = jax.nn.log_softmax(logp)
+        eps = random.gumbel(subkey, logp.shape)
+        s = jnp.argmax(logp + eps, axis=-1)
+        samples = jax.ops.index_update(samples, jax.ops.index[:, ind+1], s)
+        return (samples, key, ind+1), None
+
+    (samples, _, _), _ = jax.lax.scan(f, (samples, key, ind), None, length=qubits_num)
+    return samples[:, 1:]
+
+
+def _log_amplitude(string: jnp.ndarray,
+                   wave_function_number: int,
+                   params: List[Params],
+                   fwd: NNet,
+                   qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Return log(wave function) for a given set of bit strings.
+
+    Args:
+        string: (num_of_samples, length) array like
+        wave_function_number: number of a wave function to evaluate
+        params: parameters
+        fwd: network
+        qubits_num: number of qubits
+
+    Returns:
+        two array like (num_of_samples,) -- log of absolut value and phase"""
+
+    shape = string.shape
+    bs = shape[0]
+    zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
+    inp = jnp.concatenate([zero_spin, string], axis=1)
+    out = fwd(x=inp[:, :-1], params=params[wave_function_number])
+    logabs = out[..., :2]
+    logabs = jax.nn.log_softmax(logabs)
+    logabs = 0.5 * (logabs * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+    phi = out[..., 2:]
+    phi = jnp.pi * softsign(phi)
+    phi = (phi * jax.nn.one_hot(inp[:, 1:], 2)).sum((-2, -1))
+    return logabs, phi
+
+def _two_qubit_gate_bracket(gate: jnp.ndarray,
+                            sides: List[int],
+                            wave_function_numbers: List[int],
+                            key: PRNGKey,
+                            num_of_samples: int,
+                            params: List[Params],
+                            fwd: NNet,
+                            qubits_num: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Calculates <psi_1|U^dagger|psi_2>
+
+        Args:
+            gate: (2, 2, 2, 2) array like
+            sides: list with two int values specifying sides
+                where to apply a gate
+            wave_function_numbers: list with two int values specifying numbers
+                of wave functions
+            key: PRNGKey
+            num_of_samples: number of samples
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+
+        Returns:
+            two array like of shape (1,)"""
+
+        sample = _sample(num_of_samples,
+                         key,
+                         wave_function_numbers[0],
+                         params,
+                         fwd,
+                         qubits_num)
+        pushed_sample, ampls = push_two_qubit(sample, gate.transpose((2, 3, 0, 1)).conj(), sides)
+        denom = _log_amplitude(sample,
+                               wave_function_numbers[0],
+                               params,
+                               fwd,
+                               qubits_num)
+        nom = _log_amplitude(pushed_sample.reshape((-1, qubits_num)),
+                             wave_function_numbers[1],
+                             params,
+                             fwd,
+                             qubits_num)
+        log_abs = nom[0].reshape((-1, 4)) - denom[0][:, jnp.newaxis]
+        phi = nom[1].reshape((-1, 4)) - denom[1][:, jnp.newaxis]
+        re = jnp.exp(log_abs) * jnp.cos(phi)
+        im = jnp.exp(log_abs) * jnp.sin(phi)
+        ampls_re = jnp.real(ampls)
+        ampls_im = jnp.imag(ampls)
+        re, im = ampls_re * re - ampls_im * im, re * ampls_im + im * ampls_re
+        re, im = re.sum(1).mean(), im.sum(1).mean()
+        return re, im
