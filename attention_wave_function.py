@@ -126,7 +126,7 @@ class AttentionWaveFunction:
 
         return _two_qubit_gate_bracket(gate, sides, wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
 
-    @partial(pmap, in_axes=(None, None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 9, 10))
+    @partial(pmap, in_axes=(None, None, None, 0, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 9, 10))
     def train_epoch(self,
                     gate: jnp.ndarray,
                     sides: List[int],
@@ -151,9 +151,9 @@ class AttentionWaveFunction:
             params: parameters of wave function
             fwd: network
             qubit_num: number of qubits
-    
+
         Returns:
             loss function value, new set of parameters, new PRNGKey,
             optimizer state"""
-    
+
         return _train_epoch(gate, sides, opt, opt_state, num_of_samples, key, epoch_size, params, fwd, qubits_num)
