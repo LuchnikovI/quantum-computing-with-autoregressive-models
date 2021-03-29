@@ -3,8 +3,8 @@ from jax import pmap
 import jax.numpy as jnp
 import haiku as hk
 from attention import AttentionEncoder
-from utils import Params, PRNGKey, NNet, _log_amplitude, _sample, _two_qubit_gate_bracket
-from typing import Tuple, List
+from utils import Params, PRNGKey, NNet, _log_amplitude, _sample, _two_qubit_gate_bracket, _train_epoch
+from typing import Tuple, List, Any
 from functools import partial
 
 
@@ -124,4 +124,36 @@ class AttentionWaveFunction:
         Returns:
             two array like of shape (1,)"""
 
-        return _two_qubit_gate_bracket(gate, sides, wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)            
+        return _two_qubit_gate_bracket(gate, sides, wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
+
+    @partial(pmap, in_axes=(None, None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 9, 10))
+    def train_epoch(self,
+                    gate: jnp.ndarray,
+                    sides: List[int],
+                    opt: Any,
+                    opt_state: Any,
+                    num_of_samples: int,
+                    key: PRNGKey,
+                    epoch_size: int,
+                    params: List[Params],
+                    fwd: NNet,
+                    qubits_num: int) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
+        """Makes training epoch
+
+        Args:
+            gate: (2, 2, 2, 2) array like
+            sides: list with two elements showing where to apply a gate
+            opt: optax optimizer
+            opt_state: state of an optax optimizer
+            num_of_samples: number of samples used to evaluate loss function
+            key: PRGNKey
+            epoch_size: number of iterations
+            params: parameters of wave function
+            fwd: network
+            qubit_num: number of qubits
+    
+        Returns:
+            loss function value, new set of parameters, new PRNGKey,
+            optimizer state"""
+    
+        return _train_epoch(gate, sides, opt, opt_state, num_of_samples, key, epoch_size, params, fwd, qubits_num)
