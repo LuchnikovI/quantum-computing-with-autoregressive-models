@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import jax
-from jax import vmap, random, pmean, value_and_grad
+from jax import vmap, random, value_and_grad
+from jax.lax import pmean
 from typing import Mapping, Callable, List, Tuple, Any
 from functools import partial
 import optax
