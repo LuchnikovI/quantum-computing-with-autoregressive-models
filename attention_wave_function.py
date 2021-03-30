@@ -127,10 +127,10 @@ class AttentionWaveFunction:
 
         return _two_qubit_gate_bracket(gate, sides, wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
     
-    @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 9, 10), axis_name='i')
+    @partial(pmap, in_axes=(None, None, None, 0, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 4, 6, 8, 9), axis_name='i')
     @chex.assert_max_traces(n=1)
-    def train_epoch(self,
-                    gate: jnp.ndarray,
+    @staticmethod
+    def train_epoch(gate: jnp.ndarray,
                     sides: List[int],
                     opt: Any,
                     opt_state: Any,
