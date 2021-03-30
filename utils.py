@@ -241,7 +241,7 @@ def _train_epoch(gate: jnp.ndarray,
                 epoch_size: int,
                 params: List[Params],
                 fwd: NNet,
-                qubits_num: int) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
+                qubits_num: int) -> Tuple[List[Params], PRNGKey, Any]:
     """Makes training epoch
 
     Args:
@@ -260,6 +260,6 @@ def _train_epoch(gate: jnp.ndarray,
         loss function value, new set of parameters, new PRNGKey,
         optimizer state"""
 
-    body_fun = lambda i, val: _train_step(gate, val[0], sides, opt, val[3], num_of_samples, val[2], val[1], fwd, qubits_num)
+    body_fun = lambda i, val: _train_step(gate, sides, opt, val[2], num_of_samples, val[1], val[0], fwd, qubits_num)
     params, key, opt_sate = jax.lax.fori_loop(0, epoch_size, body_fun, (params, key, opt_state))
     return params, key, opt_state

@@ -137,7 +137,7 @@ class AttentionWaveFunction:
                     epoch_size: int,
                     params: List[Params],
                     fwd: NNet,
-                    qubits_num: int) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
+                    qubits_num: int) -> Tuple[List[Params], PRNGKey, Any]:
         """Makes training epoch
 
         Args:
