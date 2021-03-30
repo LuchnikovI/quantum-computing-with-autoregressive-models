@@ -261,5 +261,5 @@ def _train_epoch(gate: jnp.ndarray,
         optimizer state"""
 
     body_fun = lambda i, val: _train_step(gate, val[0], sides, opt, val[3], num_of_samples, val[2], val[1], fwd, qubits_num)
-    loss, params, key, opt_sate = jax.lax.fori_loop(0, epoch_size, body_fun, (jnp.array(0.), params, key, opt_state))
+    loss, params, key, opt_state = jax.lax.fori_loop(0, epoch_size, body_fun, (jnp.array(0.), params, key, opt_state))
     return loss/epoch_size, params, key, opt_state

@@ -6,7 +6,6 @@ from attention import AttentionEncoder
 from utils import Params, PRNGKey, NNet, _log_amplitude, _sample, _two_qubit_gate_bracket, _train_epoch
 from typing import Tuple, List, Any
 from functools import partial
-import chex
 
 
 class AttentionWaveFunction:
