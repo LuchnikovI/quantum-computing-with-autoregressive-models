@@ -193,6 +193,7 @@ def _two_qubit_gate_bracket(gate: jnp.ndarray,
 
 
 def _train_step(gate: jnp.ndarray,
+                loss: jnp.ndarray,
                 sides: List[int],
                 opt: Any,
                 opt_state: Any,
@@ -228,7 +229,7 @@ def _train_step(gate: jnp.ndarray,
     update, opt_state = opt.update(grad, opt_state, param_new)
     param_new = optax.apply_updates(param_new, update)
     params[1] = param_new
-    return params, key, opt_state
+    return loss+l, params, key, opt_state
 
 
 def _train_epoch(gate: jnp.ndarray,
@@ -240,7 +241,7 @@ def _train_epoch(gate: jnp.ndarray,
                 epoch_size: int,
                 params: List[Params],
                 fwd: NNet,
-                qubits_num: int) -> Tuple[List[Params], PRNGKey, Any]:
+                qubits_num: int) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
     """Makes training epoch
 
     Args:
@@ -259,6 +260,6 @@ def _train_epoch(gate: jnp.ndarray,
         loss function value, new set of parameters, new PRNGKey,
         optimizer state"""
 
-    body_fun = lambda i, val: _train_step(gate, sides, opt, val[2], num_of_samples, val[1], val[0], fwd, qubits_num)
-    params, key, opt_sate = jax.lax.fori_loop(0, epoch_size, body_fun, (params, key, opt_state))
-    return params, key, opt_state
+    body_fun = lambda i, val: _train_step(gate, val[0], sides, opt, val[3], num_of_samples, val[2], val[1], fwd, qubits_num)
+    loss, params, key, opt_sate = jax.lax.fori_loop(0, epoch_size, body_fun, (jnp.array(0.), params, key, opt_state))
+    return loss/epoch_size, params, key, opt_state
