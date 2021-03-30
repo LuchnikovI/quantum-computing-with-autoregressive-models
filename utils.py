@@ -108,7 +108,7 @@ def _sample(num_of_samples: int,
     return samples[:, 1:]
 
 
-def _log_amplitude(string: jnp.ndarray,
+def _log_amplitude(sample: jnp.ndarray,
                    wave_function_number: int,
                    params: List[Params],
                    fwd: NNet,
@@ -116,7 +116,7 @@ def _log_amplitude(string: jnp.ndarray,
     """Return log(wave function) for a given set of bit strings.
 
     Args:
-        string: (num_of_samples, length) array like
+        sample: (num_of_samples, length) array like
         wave_function_number: number of a wave function to evaluate
         params: parameters
         fwd: network
@@ -125,10 +125,10 @@ def _log_amplitude(string: jnp.ndarray,
     Returns:
         two array like (num_of_samples,) -- log of absolut value and phase"""
 
-    shape = string.shape
+    shape = sample.shape
     bs = shape[0]
     zero_spin = jnp.ones((bs, 1), dtype=jnp.int32)
-    inp = jnp.concatenate([zero_spin, string], axis=1)
+    inp = jnp.concatenate([zero_spin, sample], axis=1)
     out = fwd(x=inp[:, :-1], params=params[wave_function_number])
     logabs = out[..., :2]
     logabs = jax.nn.log_softmax(logabs)
@@ -221,14 +221,14 @@ def _train_step(gate: jnp.ndarray,
         optimizer state"""
 
     key = random.split(key)[0]
-    param1, param2 = params[0], params[1]
-    loss_func = lambda param1, param2: 1 - _two_qubit_gate_bracket(gate, sides, [0, 1], key, num_of_samples, [param1, param2], fwd, qubits_num)[0]
-    l, grad = value_and_grad(loss_func, 1)(param1, param2)
+    param_old, param_new = params[0], params[1]
+    loss_func = lambda x: 1 - _two_qubit_gate_bracket(gate, sides, [0, 1], key, num_of_samples, [param_old, x], fwd, qubits_num)[0]
+    l, grad = value_and_grad(loss_func)(param_new)
     l = pmean(l, axis_name='i')
     grad = pmean(grad, axis_name='i')
-    update, opt_state = opt.update(grad, opt_state, param2)
-    param2 = optax.apply_updates(param2, update)
-    params[1] = param2
+    update, opt_state = opt.update(grad, opt_state, param_new)
+    param_new = optax.apply_updates(param_new, update)
+    params[1] = param_new
     return loss+l, params, key, opt_state
 
 

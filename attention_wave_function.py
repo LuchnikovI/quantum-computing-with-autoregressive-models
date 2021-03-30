@@ -78,7 +78,7 @@ class AttentionWaveFunction:
 
     @partial(pmap, in_axes=(None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 2, 4, 5))
     def log_amplitude(self,
-                      string: jnp.ndarray,
+                      sample: jnp.ndarray,
                       wave_function_number: int,
                       params: List[Params],
                       fwd: NNet,
@@ -86,7 +86,7 @@ class AttentionWaveFunction:
         """Return log(wave function) for a given set of bit strings.
 
         Args:
-            string: (num_of_samples, length) array like
+            sample: (num_of_samples, length) array like
             wave_function_number: number of a wave function to evaluate
             params: parameters
             fwd: network
@@ -95,7 +95,7 @@ class AttentionWaveFunction:
         Returns:
             two array like (num_of_samples,) -- log of absolut value and phase"""
 
-        return _log_amplitude(string, wave_function_number, params, fwd, qubits_num)
+        return _log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 8))
     def two_qubit_gate_bracket(self,
