@@ -193,7 +193,6 @@ def _two_qubit_gate_bracket(gate: jnp.ndarray,
 
 
 def _train_step(gate: jnp.ndarray,
-                loss: jnp.ndarray,
                 sides: List[int],
                 opt: Any,
                 opt_state: Any,
