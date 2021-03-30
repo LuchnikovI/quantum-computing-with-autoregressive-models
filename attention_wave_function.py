@@ -6,6 +6,7 @@ from attention import AttentionEncoder
 from utils import Params, PRNGKey, NNet, _log_amplitude, _sample, _two_qubit_gate_bracket, _train_epoch
 from typing import Tuple, List, Any
 from functools import partial
+import chex
 
 
 class AttentionWaveFunction:
@@ -125,8 +126,9 @@ class AttentionWaveFunction:
             two array like of shape (1,)"""
 
         return _two_qubit_gate_bracket(gate, sides, wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
-
+    
     @partial(pmap, in_axes=(None, None, None, None, 0, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 3, 5, 7, 9, 10), axis_name='i')
+    @chex.assert_max_traces(n=1)
     def train_epoch(self,
                     gate: jnp.ndarray,
                     sides: List[int],
@@ -137,7 +139,7 @@ class AttentionWaveFunction:
                     epoch_size: int,
                     params: List[Params],
                     fwd: NNet,
-                    qubits_num: int) -> Tuple[List[Params], PRNGKey, Any]:
+                    qubits_num: int) -> Tuple[jnp.array, List[Params], PRNGKey, Any]:
         """Makes training epoch
 
         Args:
