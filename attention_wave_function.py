@@ -126,10 +126,10 @@ class AttentionWaveFunction:
             two array like of shape (1,)"""
 
         return _two_qubit_gate_bracket(gate, sides, wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
-    
+
+    @staticmethod
     @partial(pmap, in_axes=(None, None, None, 0, None, 0, None, 0, None, None), out_axes=0, static_broadcasted_argnums=(0, 1, 2, 4, 6, 8, 9), axis_name='i')
     @chex.assert_max_traces(n=1)
-    @staticmethod
     def train_epoch(gate: jnp.ndarray,
                     sides: List[int],
                     opt: Any,
