@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "qucomp-autoreg"
+version = "0.1.0"
+description = "Autoregressive neural-network backend for simulating quantum computing."
+authors = [
+    "Ilia Luchnikov <luchnikoviliya@gmail.com>",
+    "Alex Berezutskii <aleksandr.berezutskii@usherbrooke.ca>"
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+jax = "^0.2.11"
+tqdm = "^4.59.0"
+typing = "^3.7.4"
+optax = "^0.0.6"
+dm-haiku = "^0.0.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.2"
+black = "^20.8b1"
+chex = "^0.0.6"
+pylint = "^2.7.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
