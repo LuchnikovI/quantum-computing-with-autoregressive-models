@@ -302,3 +302,10 @@ def _train_epoch(
         0, epoch_size, body_fun, (jnp.array(0.0), params, key, opt_state)
     )
     return loss / epoch_size, params, key, opt_state
+
+def _mpo_block_eye_prod(block: jnp.array,
+                        eye_matrix: jnp.array):
+    _, left_bond, _, right_bond = block.shape
+    eye_dim = eye_matrix.shape[0]
+    new_block = jnp.tensordot(eye_matrix, block, axes=0).transpose((2, 3, 0, 4, 5, 1))
+    return new_block.reshape((2, eye_dim * left_bond, 2, eye_dim * right_bond))
