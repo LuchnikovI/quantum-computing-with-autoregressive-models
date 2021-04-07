@@ -19,7 +19,7 @@ class CircuitMPO:
                    mpo: List[np.ndarray],
                    gate: np.ndarray,
                    sides: List[int],
-                   eps=1e-6):
+                   eps=1e-15):
         """Update MPO inplace
         Args:
             mpo: list with MPO blocks
