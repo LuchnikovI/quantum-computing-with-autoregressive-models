@@ -18,6 +18,7 @@ from ..utils import (
     _sample,
     _two_qubit_gate_bracket,
     _train_epoch,
+    _circ_bracket
 )
 
 
@@ -170,6 +171,40 @@ class AttentionWaveFunction:
             fwd,
             qubits_num,
         )
+
+    @partial(
+        pmap,
+        in_axes=(None, None, None, None, 0, None, 0, None, None),
+        out_axes=0,
+        static_broadcasted_argnums=(0, 2, 3, 5, 7, 8),
+    )
+    def circ_bracket(self,
+                     mpo: List[jnp.ndarray],
+                     circ: Any,
+                     wave_function_numbers: List[int],
+                     key: PRNGKey,
+                     num_of_samples: int,
+                     params: List[Params],
+                     fwd: NNet,
+                     qubits_num: int,
+                     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Calculates <psi_1|mpo|psi_2>
+
+        Args:
+            mpo: mpo representation of a circuit
+            circ: object of class circuit
+            wave_function_numbers: list with two int values specifying numbers
+                of wave functions
+            key: PRNGKey
+            num_of_samples: number of samples
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+
+        Returns:
+            two array like of shape (1,)"""
+
+        return _circ_bracket(wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
 
     @partial(
         pmap,

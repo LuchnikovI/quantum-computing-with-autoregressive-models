@@ -10,6 +10,7 @@ import jax
 from jax import vmap, random, value_and_grad
 from jax.lax import pmean
 import optax
+from qucomp_autoreg.tn_circuits.circuit_mpo import CircuitMPO
 
 
 Params = Mapping[str, Mapping[str, jnp.ndarray]]  # Neural network params type
@@ -208,6 +209,43 @@ def _two_qubit_gate_bracket(
     re, im = re.sum(1).mean(), im.sum(1).mean()
     return re, im
 
+
+def _circ_bracket(mpo: List[jnp.ndarray],
+                  circ: Any,
+                  wave_function_numbers: List[int],
+                  key: PRNGKey,
+                  num_of_samples: int,
+                  params: List[Params],
+                  fwd: NNet,
+                  qubits_num: int,
+                  ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Calculates <psi_1|mpo|psi_2>
+
+    Args:
+        mpo: mpo representation of a circuit
+        circ: object of class circuit
+        wave_function_numbers: list with two int values specifying numbers
+            of wave functions
+        key: PRNGKey
+        num_of_samples: number of samples
+        params: parameters
+        fwd: network
+        qubits_num: number of qubits
+
+    Returns:
+        two array like of shape (1,)"""
+
+    sample = _sample(num_of_samples, key, wave_function_numbers[0], params, fwd, qubits_num)
+    log_u, pushed_sample = circ.push_sample(sample, mpo, key)
+    denom = _log_amplitude(sample, wave_function_numbers[0], params, fwd, qubits_num)
+    nom = _log_amplitude(pushed_sample, wave_function_numbers[1], params, fwd, qubits_num)
+    log_abs = nom[0] - denom[0] - jnp.real(log_u)
+    phi = nom[1] - denom[1] - jnp.imag(log_u)
+    re = jnp.exp(log_abs) * jnp.cos(phi)
+    im = jnp.exp(log_abs) * jnp.sin(phi)
+    re, im = re.sum(1).mean(), im.sum(1).mean()
+    return re, im
+    
 
 def _train_step(
     gate: jnp.ndarray,
