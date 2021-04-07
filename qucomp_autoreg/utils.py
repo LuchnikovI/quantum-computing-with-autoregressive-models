@@ -10,7 +10,6 @@ import jax
 from jax import vmap, random, value_and_grad
 from jax.lax import pmean
 import optax
-from qucomp_autoreg.tn_circuits.circuit_mpo import CircuitMPO
 
 
 Params = Mapping[str, Mapping[str, jnp.ndarray]]  # Neural network params type
@@ -340,6 +339,7 @@ def _train_epoch(
         0, epoch_size, body_fun, (jnp.array(0.0), params, key, opt_state)
     )
     return loss / epoch_size, params, key, opt_state
+
 
 def _mpo_block_eye_prod(block: jnp.array,
                         eye_matrix: jnp.array):
