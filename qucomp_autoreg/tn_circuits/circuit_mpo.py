@@ -2,7 +2,7 @@ from jax import numpy as jnp
 from jax import vmap, random
 from typing import List
 from functools import partial, reduce
-from utils import _mpo_block_eye_prod
+from ..utils import _mpo_block_eye_prod
 
 
 class CircuitMPO:
