@@ -7,7 +7,6 @@ import pickle
 import time
 import jax
 from jax import random
-import numpy as np
 import jax.numpy as jnp
 from tqdm import tqdm
 from ..wave_functions.attention_wave_function import AttentionWaveFunction
@@ -116,7 +115,7 @@ class ExactQCWrapper:
         length: int, length of a chain"""
 
     def __init__(self, length):
-        self.state = np.ones(2 ** length, dtype=np.complex64) / np.sqrt(2 ** length)
+        self.state = jnp.ones(2 ** length, dtype=jnp.complex64) / jnp.sqrt(2 ** length)
         self.state = self.state.reshape(length * (2,))
         self.circuit = []
         self.length = length
@@ -153,7 +152,7 @@ class ExactQCWrapper:
                 + (second_edge,)
                 + tuple(range(max_index - 1, self.length - 2))
             )
-            self.state = np.tensordot(self.state, gate, axes=[sides, [2, 3]])
+            self.state = jnp.tensordot(self.state, gate, axes=[sides, [2, 3]])
             self.state = self.state.transpose(new_ord)
 
     def get_output_state(self):

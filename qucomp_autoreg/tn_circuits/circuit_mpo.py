@@ -1,5 +1,4 @@
 from jax import numpy as jnp
-import numpy as np
 from jax import vmap, random
 from typing import List
 from functools import partial, reduce
@@ -11,13 +10,13 @@ class CircuitMPO:
     def __init__(self, number_of_qubits: int):
         self.number_of_qubits = number_of_qubits
 
-    def init(self) -> List[np.ndarray]:
+    def init(self) -> List[jnp.ndarray]:
         """Returns initial MPO (MPO representation of the identity matrix)"""
-        return self.number_of_qubits * [np.eye(2, dtype=np.complex64).reshape((2, 1, 2, 1))]
+        return self.number_of_qubits * [jnp.eye(2, dtype=jnp.complex64).reshape((2, 1, 2, 1))]
 
     def apply_gate(self,
-                   mpo: List[np.ndarray],
-                   gate: np.ndarray,
+                   mpo: List[jnp.ndarray],
+                   gate: jnp.ndarray,
                    sides: List[int],
                    eps=1e-6):
         """Update MPO inplace
@@ -36,24 +35,24 @@ class CircuitMPO:
         # gate splitting
         gate = gate.transpose((0, 2, 1, 3))
         gate = gate.reshape((4, 4))
-        left, s, right = np.linalg.svd(gate, full_matrices=False)
+        left, s, right = jnp.linalg.svd(gate, full_matrices=False)
         eta = (s > eps).sum()
         s, left, right = s[:eta], left[:, :eta], right[:eta]
-        left, right = left * np.sqrt(s), right * np.sqrt(s)[:, np.newaxis]
+        left, right = left * jnp.sqrt(s), right * jnp.sqrt(s)[:, jnp.newaxis]
         left, right = left.reshape((2, 2, -1)), right.reshape((-1, 2, 2))
         # gate mpo blocks dot product
-        left = np.einsum('ijkl,min->mjkln', mpo[sides[0]], left)
-        right = np.einsum('ijkl,nmi->mjnkl', mpo[sides[1]], right)
+        left = jnp.einsum('ijkl,min->mjkln', mpo[sides[0]], left)
+        right = jnp.einsum('ijkl,nmi->mjnkl', mpo[sides[1]], right)
         # setting proper shape of new mpo blocks
         right, left = right.reshape((2, -1, 2, right_bond_1)), left.reshape((2, left_bond_0, 2, -1))
         # update left and right blocks
         mpo[sides[0]], mpo[sides[1]] = left, right
         # update inner blocks
-        eye_matrix = np.eye(right.shape[0], dtype=gate.dtype)
+        eye_matrix = jnp.eye(right.shape[0], dtype=gate.dtype)
         mpo[sides[0]+1:sides[1]] = list(map(partial(_mpo_block_eye_prod, eye_matrix=eye_matrix), mpo[sides[0]+1:sides[1]]))
     
     def truncate(self,
-                 mpo: List[np.ndarray],
+                 mpo: List[jnp.ndarray],
                  eps=1e-6):
         """Truncate MPO inplace
 
@@ -66,10 +65,10 @@ class CircuitMPO:
             left_shape, right_shape = left.shape, right.shape
             left, right = left.reshape((-1, left_shape[-1])), right.reshape((right_shape[0], -1))
             block = left @ right
-            u, s, vh = np.linalg.svd(block, full_matrices=False)
+            u, s, vh = jnp.linalg.svd(block, full_matrices=False)
             eta = (s > eps).sum()
             s, u, vh = s[:eta], u[:, :eta], vh[:eta]
-            left, right = u, vh * s[:, np.newaxis]
+            left, right = u, vh * s[:, jnp.newaxis]
             left, right = left.reshape(left_shape[:-1] + (-1,)), right.reshape((-1,) + right_shape[1:])
             mpo[i], mpo[i+1] = left, right.transpose((1, 0, 2, 3))
 
