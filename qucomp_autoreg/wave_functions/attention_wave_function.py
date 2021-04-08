@@ -263,3 +263,54 @@ class AttentionWaveFunction:
             fwd,
             qubits_num,
         )
+
+    @partial(
+        pmap,
+        in_axes=(None, None, None, None, 0, None, 0, None, 0, None, None),
+        out_axes=0,
+        static_broadcasted_argnums=(0, 2, 3, 5, 7, 9, 10),
+        axis_name="i",
+    )
+    def train_epoch_circ(
+        self,
+        mpo: List[jnp.ndarray],
+        circ: Any,
+        opt: Any,
+        opt_state: Any,
+        num_of_samples: int,
+        key: PRNGKey,
+        epoch_size: int,
+        params: List[Params],
+        fwd: NNet,
+        qubits_num: int,
+    ) -> Tuple[jnp.array, List[Params], PRNGKey, Any]:
+        """Makes training epoch
+
+        Args:
+            mpo: mpo representation of a circuit
+            circ: circuit
+            opt: optax optimizer
+            opt_state: state of an optax optimizer
+            num_of_samples: number of samples used to evaluate loss function
+            key: PRGNKey
+            epoch_size: number of iterations
+            params: parameters of wave function
+            fwd: network
+            qubit_num: number of qubits
+
+        Returns:
+            loss function value, new set of parameters, new PRNGKey,
+            optimizer state"""
+
+        return _train_epoch(
+            mpo,
+            circ,
+            opt,
+            opt_state,
+            num_of_samples,
+            key,
+            epoch_size,
+            params,
+            fwd,
+            qubits_num,
+        )

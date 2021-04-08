@@ -244,6 +244,51 @@ def _circ_bracket(mpo: List[jnp.ndarray],
     im = jnp.exp(log_abs) * jnp.sin(phi)
     re, im = re.mean(), im.mean()
     return re, im
+
+
+def _train_step_circ(mpo: List[jnp.ndarray],
+                     loss: jnp.ndarray,
+                     circ: Any,
+                     opt: Any,
+                     opt_state: Any,
+                     num_of_samples: int,
+                     key: PRNGKey,
+                     params: List[Params],
+                     fwd: NNet,
+                     qubits_num: int) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
+    """Makes one training step
+
+    Args:
+        mpo: mpo representation of a circuit
+        loss: (1,) array like
+        circ: circuit
+        opt: optax optimizer
+        opt_state: state of an optax optimizer
+        num_of_samples: number of samples used to evaluate loss function
+        key: PRGNKey
+        params: parameters of wave function
+        fwd: network
+        qubit_num: number of qubits
+
+    Returns:
+        loss function value, new set of parameters, new PRNGKey,
+        optimizer state"""
+
+    key = random.split(key)[0]
+    param_old, param_new = params[0], params[1]
+    loss_func = (
+        lambda x: 1
+        - _circ_bracket(
+            mpo, circ, [0, 1], key, num_of_samples, [param_old, x], fwd, qubits_num
+        )[0]
+    )
+    l, grad = value_and_grad(loss_func)(param_new)
+    l = pmean(l, axis_name="i")
+    grad = pmean(grad, axis_name="i")
+    update, opt_state = opt.update(grad, opt_state, param_new)
+    param_new = optax.apply_updates(param_new, update)
+    params[1] = param_new
+    return loss + l, params, key, opt_state
     
 
 def _train_step(
@@ -291,6 +336,54 @@ def _train_step(
     param_new = optax.apply_updates(param_new, update)
     params[1] = param_new
     return loss + l, params, key, opt_state
+
+
+def _train_epoch_circ(
+    mpo: List[jnp.ndarray],
+    circ: Any,
+    opt: Any,
+    opt_state: Any,
+    num_of_samples: int,
+    key: PRNGKey,
+    epoch_size: int,
+    params: List[Params],
+    fwd: NNet,
+    qubits_num: int,
+) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
+    """Makes training epoch
+
+    Args:
+        mpo: mpo representation of a circuit
+        circ: circuit
+        opt: optax optimizer
+        opt_state: state of an optax optimizer
+        num_of_samples: number of samples used to evaluate loss function
+        key: PRGNKey
+        epoch_size: number of iterations
+        params: parameters of wave function
+        fwd: network
+        qubit_num: number of qubits
+
+    Returns:
+        loss function value, new set of parameters, new PRNGKey,
+        optimizer state"""
+
+    body_fun = lambda i, val: _train_step_circ(
+        mpo,
+        val[0],
+        circ,
+        opt,
+        val[3],
+        num_of_samples,
+        val[2],
+        val[1],
+        fwd,
+        qubits_num,
+    )
+    loss, params, key, opt_state = jax.lax.fori_loop(
+        0, epoch_size, body_fun, (jnp.array(0.0), params, key, opt_state)
+    )
+    return loss / epoch_size, params, key, opt_state
 
 
 def _train_epoch(
