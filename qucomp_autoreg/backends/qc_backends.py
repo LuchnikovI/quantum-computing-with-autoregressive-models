@@ -218,7 +218,7 @@ class NeuralTensorQCWrapper:
         loss_dynamics = []
         for i in tqdm(range(iters)):
             compilation_time = time.time()
-            loss, self.params, keys, self.opt_state = self.wave_func.train_epoch(
+            loss, self.params, keys, self.opt_state = self.wave_func.train_epoch_circ(
                 self.mpo,
                 self.circ,
                 self.opt,
