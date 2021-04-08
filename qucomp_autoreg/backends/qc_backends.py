@@ -159,3 +159,100 @@ class ExactQCWrapper:
         """Returns output state"""
 
         return self.state
+
+
+class NeuralTensorQCWrapper:
+    """Wrapper for combined neural-tensor networks based quantum computation.
+
+    Args:
+        number_of_heads: int number, number of heads in MultiHeadAttention
+        kqv_size: int number, size of key, value and query for all layers
+        number_of_layers: int number, number of layers
+        length: int, length of a chain
+        key: PRNGKey"""
+
+    def __init__(self, number_of_heads, kqv_size, number_of_layers, length, key):
+
+        self.wave_func = AttentionWaveFunction(
+            number_of_heads, kqv_size, number_of_layers, 2
+        )
+        self.params, self.fwd, self.length = self.wave_func.init(key, length)
+        self.circ = None
+        self.mpo = None
+        self.training_data = []
+        self.key = key
+        self.num_devices = jax.local_device_count()
+        self.opt = None
+        self.opt_state = None
+
+    def set_circuit(self, mpo, circ):
+        """Adds gate to the circuit.
+
+        Args:
+            mpo: mpo representation of a circuit
+            circ: circuit"""
+
+        self.circ = circ
+        self.mpo = mpo
+
+    def set_optimizer(self, opt):
+        """Sets optax optimizer"""
+
+        self.opt = opt
+        one_device_params = jax.tree_util.tree_map(lambda x: x[0], self.params[0])
+        self.opt_state = jax.tree_util.tree_map(
+            lambda x: jnp.stack(8 * [x]), opt.init(one_device_params)
+        )
+
+    def train_qc(self, epoch_size, iters, num_of_samples):
+        """Calculates output of a quantum circuit.
+
+        Args:
+            epoch_size: int, size of one epoch
+            iters: int, number of epoch
+            number_of_samples: int, number of samples per iteration"""
+
+        gate_time = time.time()
+        self.key = random.split(self.key)[0]
+        keys = random.split(self.key, self.num_devices)
+        loss_dynamics = []
+        for i in tqdm(range(iters)):
+            compilation_time = time.time()
+            loss, self.params, keys, self.opt_state = self.wave_func.train_epoch(
+                self.mpo,
+                self.circ,
+                self.opt,
+                self.opt_state,
+                num_of_samples,
+                keys,
+                epoch_size,
+                self.params,
+                self.fwd,
+                self.length,
+            )
+            loss_dynamics.append(loss[0])
+            if i == 0:
+                print(", Compilation time = " + str(time.time() - compilation_time))
+        opt_state = self.opt.init(
+            jax.tree_util.tree_map(lambda x: x[0], self.params[1])
+        )
+        opt_state = jax.tree_util.tree_map(
+            lambda x: jnp.stack([x] * self.num_devices), opt_state
+        )
+        self.opt_state = opt_state
+        self.params[0] = self.params[1]
+        self.training_data.append({"loss_dynamics": loss_dynamics})
+        print("Training time = " + str(time.time() - gate_time))
+        print("Loss value = " + str(loss[0]))
+        with open("trained_circuit" + ".pickle", "wb") as f:
+            pickle.dump(self.params[0], f)
+
+    def get_network(self):
+        """Returns output of a circuit in the form of NN"""
+
+        return self.wave_func
+
+    def get_training_data(self):
+        """Returns log of training"""
+
+        return self.training_data
