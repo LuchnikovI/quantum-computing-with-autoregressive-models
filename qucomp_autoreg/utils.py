@@ -250,9 +250,6 @@ def _circ_bracket(
     re, im = re.mean(), im.mean()
     return re, im
 
-<<<<<<< HEAD
-=======
-
 def _train_step_circ(mpo: List[jnp.ndarray],
                      loss: jnp.ndarray,
                      circ: Any,
@@ -264,7 +261,6 @@ def _train_step_circ(mpo: List[jnp.ndarray],
                      fwd: NNet,
                      qubits_num: int) -> Tuple[jnp.ndarray, List[Params], PRNGKey, Any]:
     """Makes one training step
-
     Args:
         mpo: mpo representation of a circuit
         loss: (1,) array like
@@ -276,7 +272,6 @@ def _train_step_circ(mpo: List[jnp.ndarray],
         params: parameters of wave function
         fwd: network
         qubit_num: number of qubits
-
     Returns:
         loss function value, new set of parameters, new PRNGKey,
         optimizer state"""
@@ -296,8 +291,6 @@ def _train_step_circ(mpo: List[jnp.ndarray],
     param_new = optax.apply_updates(param_new, update)
     params[1] = param_new
     return loss + l, params, key, opt_state
-    
->>>>>>> origin/main
 
 def _train_step(
     gate: jnp.ndarray,
