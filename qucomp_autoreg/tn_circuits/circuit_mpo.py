@@ -1,3 +1,5 @@
+"""This module contains the CircuitMPO class which basically represents circuits as MPOs."""
+
 from typing import List
 from functools import partial, reduce
 from jax import numpy as jnp
@@ -6,6 +8,13 @@ from ..utils import _mpo_block_eye_prod
 
 
 class CircuitMPO:
+    """A quantum circuit as a Matrix Product Operator
+
+    Note, that due to the functional progamming flavour of JAX, we will be passing the MPO itself as a list of tensors externally.
+
+    Args:
+        number_of_qubits: number of qubits in the circuit"""
+
     def __init__(self, number_of_qubits: int):
         self.number_of_qubits = number_of_qubits
 
