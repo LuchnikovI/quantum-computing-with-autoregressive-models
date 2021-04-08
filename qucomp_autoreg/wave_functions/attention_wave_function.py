@@ -18,7 +18,8 @@ from ..utils import (
     _sample,
     _two_qubit_gate_bracket,
     _train_epoch,
-    _circ_bracket,
+    _train_epoch_circ,
+    _circ_bracket
 )
 
 
@@ -303,7 +304,7 @@ class AttentionWaveFunction:
             loss function value, new set of parameters, new PRNGKey,
             optimizer state"""
 
-        return _train_epoch(
+        return _train_epoch_circ(
             mpo,
             circ,
             opt,

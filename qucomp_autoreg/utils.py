@@ -442,7 +442,7 @@ def _mpo_block_eye_prod(block: jnp.array, eye_matrix: jnp.array):
     return new_block.reshape((2, eye_dim * left_bond, 2, eye_dim * right_bond))
 
 
-def contract_mpo_tensors(tensor_1: jnp.array, tensor_2: jnp.array) -> jnp.array:
+def _contract_mpo_tensors(tensor_1: jnp.array, tensor_2: jnp.array) -> jnp.array:
     """Returns a contracted MPO tensor, contracted in the bond leg.
     The convention for the indices is as follows: (out_phys, left_bond, in_phys, right_bond)"""
 
@@ -452,14 +452,14 @@ def contract_mpo_tensors(tensor_1: jnp.array, tensor_2: jnp.array) -> jnp.array:
     return contracted_tensor
 
 
-def mpo_to_dense(mpo: List[jnp.ndarray]) -> jnp.array:
+def _mpo_to_dense(mpo: List[jnp.ndarray]) -> jnp.array:
     """Returns a dense representation of a given MPO as a list of tensors.
     Warning: scales exponentially with a number of qubits, use with caution!"""
 
     num_qubits = len(mpo)
     assert num_qubits <= 15
 
-    mpo_matrix = reduce(contract_mpo_tensors, mpo)
+    mpo_matrix = reduce(_contract_mpo_tensors, mpo)
     mpo_matrix = jnp.reshape(mpo_matrix, (2 ** num_qubits, 2 ** num_qubits))
 
     return mpo_matrix
