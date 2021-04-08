@@ -209,15 +209,16 @@ def _two_qubit_gate_bracket(
     return re, im
 
 
-def _circ_bracket(mpo: List[jnp.ndarray],
-                  circ: Any,
-                  wave_function_numbers: List[int],
-                  key: PRNGKey,
-                  num_of_samples: int,
-                  params: List[Params],
-                  fwd: NNet,
-                  qubits_num: int,
-                  ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def _circ_bracket(
+    mpo: List[jnp.ndarray],
+    circ: Any,
+    wave_function_numbers: List[int],
+    key: PRNGKey,
+    num_of_samples: int,
+    params: List[Params],
+    fwd: NNet,
+    qubits_num: int,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Calculates <psi_1|mpo|psi_2>
 
     Args:
@@ -234,15 +235,19 @@ def _circ_bracket(mpo: List[jnp.ndarray],
     Returns:
         two array like of shape (1,)"""
 
-    sample = _sample(num_of_samples, key, wave_function_numbers[0], params, fwd, qubits_num)
+    sample = _sample(
+        num_of_samples, key, wave_function_numbers[0], params, fwd, qubits_num
+    )
     log_u, pushed_sample = circ.push_sample(sample, mpo, key)
     denom = _log_amplitude(sample, wave_function_numbers[0], params, fwd, qubits_num)
-    nom = _log_amplitude(pushed_sample, wave_function_numbers[1], params, fwd, qubits_num)
+    nom = _log_amplitude(
+        pushed_sample, wave_function_numbers[1], params, fwd, qubits_num
+    )
     log_abs = nom[0] - denom[0] - jnp.real(log_u)
     phi = nom[1] - denom[1] - jnp.imag(log_u)
     re = jnp.exp(log_abs) * jnp.cos(phi)
     im = jnp.exp(log_abs) * jnp.sin(phi)
-    re, im = re.sum(1).mean(), im.sum(1).mean()
+    re, im = re.mean(), im.mean()
     return re, im
 
 
@@ -341,9 +346,14 @@ def _train_epoch(
     return loss / epoch_size, params, key, opt_state
 
 
-def _mpo_block_eye_prod(block: jnp.array,
-                        eye_matrix: jnp.array):
+def _mpo_block_eye_prod(block: jnp.array, eye_matrix: jnp.array):
     _, left_bond, _, right_bond = block.shape
     eye_dim = eye_matrix.shape[0]
     new_block = jnp.tensordot(eye_matrix, block, axes=0).transpose((2, 3, 0, 4, 5, 1))
     return new_block.reshape((2, eye_dim * left_bond, 2, eye_dim * right_bond))
+
+def mpo_to_dense():
+
+    # code
+
+    return None
