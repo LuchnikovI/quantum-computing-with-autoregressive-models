@@ -75,9 +75,9 @@ class CircuitMPO:
 
     @partial(vmap, in_axes=(None, 0, None, 0))
     def _push_sample(self,
-                    inp_sample: jnp.ndarray,
-                    mpo: List[jnp.ndarray],
-                    key: jnp.ndarray) -> List[jnp.ndarray]:
+                     inp_sample: jnp.ndarray,
+                     mpo: List[jnp.ndarray],
+                     key: jnp.ndarray) -> List[jnp.ndarray]:
         """Conditionally samples from MPO
 
         Args:
