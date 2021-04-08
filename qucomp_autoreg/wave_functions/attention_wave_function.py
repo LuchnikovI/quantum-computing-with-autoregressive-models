@@ -204,7 +204,14 @@ class AttentionWaveFunction:
         Returns:
             two array like of shape (1,)"""
 
-        return _circ_bracket(wave_function_numbers, key, num_of_samples, params, fwd, qubits_num)
+        return _circ_bracket(mpo,
+                             circ,
+                             wave_function_numbers,
+                             key,
+                             num_of_samples,
+                             params,
+                             fwd,
+                             qubits_num)
 
     @partial(
         pmap,
