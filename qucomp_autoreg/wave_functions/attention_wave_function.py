@@ -18,6 +18,7 @@ from ..utils import (
     _sample,
     _two_qubit_gate_bracket,
     _train_epoch,
+    _train_epoch_circ,
     _circ_bracket
 )
 
