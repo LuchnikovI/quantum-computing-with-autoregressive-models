@@ -29,8 +29,10 @@ class CircuitMPO:
             sides[0], sides[1] = sides[1], sides[0]
             gate = gate.transpose((1, 0, 3, 2))
         # mpo blocks bond dimensions
-        _, left_bond_0, _, right_bond_0 = mpo[sides[0]].shape
-        _, left_bond_1, _, right_bond_1 = mpo[sides[1]].shape
+        _, left_bond_0, _, _ = mpo[sides[0]].shape
+        # _, left_bond_0, _, right_bond_0 = mpo[sides[0]].shape
+        _, _, _, right_bond_1 = mpo[sides[1]].shape
+        # _, left_bond_1, _, right_bond_1 = mpo[sides[1]].shape
         # gate splitting
         gate = gate.transpose((0, 2, 1, 3))
         gate = gate.reshape((4, 4))

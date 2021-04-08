@@ -4,7 +4,7 @@ This module contains different useful utilities.
 
 
 from typing import Mapping, Callable, List, Tuple, Any
-from functools import partial
+from functools import partial, reduce
 import jax.numpy as jnp
 import jax
 from jax import vmap, random, value_and_grad
@@ -352,8 +352,25 @@ def _mpo_block_eye_prod(block: jnp.array, eye_matrix: jnp.array):
     new_block = jnp.tensordot(eye_matrix, block, axes=0).transpose((2, 3, 0, 4, 5, 1))
     return new_block.reshape((2, eye_dim * left_bond, 2, eye_dim * right_bond))
 
-def mpo_to_dense():
 
-    # code
+def contract_mpo_tensors(tensor_1: jnp.array, tensor_2: jnp.array) -> jnp.array:
+    """Returns a contracted MPO tensor, contracted in the bond leg.
+    The convention for the indices is as follows: (out_phys, left_bond, in_phys, right_bond)"""
 
-    return None
+    contracted_tensor = jnp.tensordot(tensor_1, tensor_2, axes=[-1, 1])
+    # contracted_tensor = jnp.einsum("ijkl, mlno -> ijknom")
+
+    return contracted_tensor
+
+
+def mpo_to_dense(mpo: List[jnp.ndarray]) -> jnp.array:
+    """Returns a dense representation of a given MPO as a list of tensors.
+    Warning: scales exponentially with a number of qubits, use with caution!"""
+
+    num_qubits = len(mpo)
+    assert num_qubits <= 15
+
+    mpo_matrix = reduce(contract_mpo_tensors, mpo)
+    mpo_matrix = jnp.reshape(mpo_matrix, (2 ** num_qubits, 2 ** num_qubits))
+
+    return mpo_matrix
