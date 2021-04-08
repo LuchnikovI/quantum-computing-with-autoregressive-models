@@ -302,7 +302,7 @@ class AttentionWaveFunction:
             loss function value, new set of parameters, new PRNGKey,
             optimizer state"""
 
-        return _train_epoch(
+        return _train_epoch_circ(
             mpo,
             circ,
             opt,
