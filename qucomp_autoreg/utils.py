@@ -244,7 +244,7 @@ def _circ_bracket(mpo: List[jnp.ndarray],
     im = jnp.exp(log_abs) * jnp.sin(phi)
     re, im = re.sum(1).mean(), im.sum(1).mean()
     return re, im
-    
+
 
 def _train_step(
     gate: jnp.ndarray,
