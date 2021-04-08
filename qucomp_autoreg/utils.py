@@ -242,7 +242,7 @@ def _circ_bracket(mpo: List[jnp.ndarray],
     phi = nom[1] - denom[1] - jnp.imag(log_u)
     re = jnp.exp(log_abs) * jnp.cos(phi)
     im = jnp.exp(log_abs) * jnp.sin(phi)
-    re, im = re.sum(1).mean(), im.sum(1).mean()
+    re, im = re.mean(), im.mean()
     return re, im
     
 
