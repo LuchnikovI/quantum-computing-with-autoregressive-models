@@ -35,10 +35,11 @@ class CircuitMPO:
         # gate splitting
         gate = gate.transpose((0, 2, 1, 3))
         gate = gate.reshape((4, 4))
-        left, s, right = jnp.linalg.svd(gate, full_matrices=False)
-        eta = (s > eps).sum()
-        s, left, right = s[:eta], left[:, :eta], right[:eta]
-        left, right = left * jnp.sqrt(s), right * jnp.sqrt(s)[:, jnp.newaxis]
+        left, right = jnp.linalg.qr(gate)
+        # left, s, right = jnp.linalg.svd(gate, full_matrices=False)
+        # eta = (s > eps).sum()
+        # s, left, right = s[:eta], left[:, :eta], right[:eta]
+        # left, right = left * jnp.sqrt(s), right * jnp.sqrt(s)[:, jnp.newaxis]
         left, right = left.reshape((2, 2, -1)), right.reshape((-1, 2, 2))
         # gate mpo blocks dot product
         left = jnp.einsum('ijkl,min->mjkln', mpo[sides[0]], left)
