@@ -217,6 +217,7 @@ class NeuralTensorQCWrapper:
         self.key = random.split(self.key)[0]
         keys = random.split(self.key, self.num_devices)
         loss_dynamics = []
+        loss_aggregation = 0.
         for i in tqdm(range(iters)):
             compilation_time = time.time()
             loss, self.params, keys, self.opt_state = self.wave_func.train_epoch_circ(
@@ -231,7 +232,8 @@ class NeuralTensorQCWrapper:
                 self.fwd,
                 self.length,
             )
-            loss_dynamics.append((1 - m) * loss[0] + m * loss_dynamics[-1])
+            loss_aggregation = m*loss_aggregation + (1-m)*loss[0]
+            loss_dynamics.append(loss_aggregation)
             if i == 0:
                 print(", Compilation time = " + str(time.time() - compilation_time))
         opt_state = self.opt.init(
