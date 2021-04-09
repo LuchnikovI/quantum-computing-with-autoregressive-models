@@ -451,7 +451,7 @@ def _contract_mpo_tensors(tensor_1: jnp.array, tensor_2: jnp.array) -> jnp.array
     The convention for the indices is as follows: (out_phys, left_bond, in_phys, right_bond)"""
 
     contracted_tensor = jnp.tensordot(tensor_1, tensor_2, axes=[-1, 1])
-    # contracted_tensor = jnp.einsum("ijkl, mlno -> ijknom")
+    # contracted_tensor = jnp.einsum("ijkl, mlno -> ijkmno")
 
     return contracted_tensor
 
