@@ -50,7 +50,7 @@ class NeuralQCWrapper:
         self.opt = opt
         one_device_params = jax.tree_util.tree_map(lambda x: x[0], self.params[0])
         self.opt_state = jax.tree_util.tree_map(
-            lambda x: jnp.stack(8 * [x]), opt.init(one_device_params)
+            lambda x: jnp.stack(self.num_devices * [x]), opt.init(one_device_params)
         )
 
     def train_qc(self, epoch_size, iters, num_of_samples):
@@ -201,7 +201,7 @@ class NeuralTensorQCWrapper:
         self.opt = opt
         one_device_params = jax.tree_util.tree_map(lambda x: x[0], self.params[0])
         self.opt_state = jax.tree_util.tree_map(
-            lambda x: jnp.stack(8 * [x]), opt.init(one_device_params)
+            lambda x: jnp.stack(self.num_devices * [x]), opt.init(one_device_params)
         )
 
     def train_qc(self, epoch_size, iters, num_of_samples):
