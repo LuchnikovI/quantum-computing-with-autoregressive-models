@@ -204,13 +204,14 @@ class NeuralTensorQCWrapper:
             lambda x: jnp.stack(self.num_devices * [x]), opt.init(one_device_params)
         )
 
-    def train_qc(self, epoch_size, iters, num_of_samples):
+    def train_qc(self, epoch_size, iters, num_of_samples, m=0):
         """Calculates output of a quantum circuit.
 
         Args:
             epoch_size: int, size of one epoch
             iters: int, number of epoch
-            number_of_samples: int, number of samples per iteration"""
+            number_of_samples: int, number of samples per iteration
+            m: momentum"""
 
         gate_time = time.time()
         self.key = random.split(self.key)[0]
@@ -230,7 +231,7 @@ class NeuralTensorQCWrapper:
                 self.fwd,
                 self.length,
             )
-            loss_dynamics.append(loss[0])
+            loss_dynamics.append((1 - m) * loss[0] + m * loss_dynamics[-1])
             if i == 0:
                 print(", Compilation time = " + str(time.time() - compilation_time))
         opt_state = self.opt.init(
