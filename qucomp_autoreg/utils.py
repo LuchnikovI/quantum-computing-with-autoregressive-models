@@ -39,7 +39,7 @@ def _push_two_qubit(pauli_string, u, sides):
     pauli_string1 = jax.ops.index_update(pauli_string, sides[1], not_ind1)
     pauli_string2 = jax.ops.index_update(pauli_string, sides[0], not_ind2)
     pauli_string3 = jax.ops.index_update(pauli_string2, sides[1], not_ind1)
-    pusshed_pauli_strings = jnp.concatenate(
+    pushed_pauli_strings = jnp.concatenate(
         [
             pauli_string[jnp.newaxis],
             pauli_string1[jnp.newaxis],
@@ -51,7 +51,7 @@ def _push_two_qubit(pauli_string, u, sides):
     weights = weights[
         (ind2, ind2, not_ind2, not_ind2), (ind1, not_ind1, ind1, not_ind1)
     ]
-    return pusshed_pauli_strings, weights
+    return pushed_pauli_strings, weights
 
 
 @partial(vmap, in_axes=(0, None, None))
