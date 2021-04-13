@@ -203,9 +203,9 @@ class WaveFunctionParallel(WaveFunction):
         return super().log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
-             in_axes=(None, None, 0, None, 0, None, None),
+             in_axes=(None, None, None, 0, None, 0, None, None),
              out_axes=0,
-             static_broadcasted_argnums=(0, 2, 4, 5))
+             static_broadcasted_argnums=(0, 1, 2, 4, 6, 7))
     def two_qubit_gate_log_amplitude(self,
                                      gate: jnp.ndarray,
                                      sides: List[int],
