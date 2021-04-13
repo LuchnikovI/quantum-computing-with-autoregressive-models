@@ -3,6 +3,7 @@ This module contains the Haiku model of autoregressive attention and relevant ut
 """
 
 import jax
+import jax.numpy as jnp
 import haiku as hk
 
 

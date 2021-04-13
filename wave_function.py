@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from jax import random, pmap
 import jax
 import haiku as hk
-from attention.attention import AttentionEncoder
+from attention import AttentionEncoder
 from utils import (
     Params,
     PRNGKey,
