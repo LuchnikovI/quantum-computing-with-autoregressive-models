@@ -146,7 +146,7 @@ class WaveFunction:
 
         pushed_samples, weights = _push_two_qubit(sample, gate, sides)
         log_weights = jnp.log(weights)
-        pushed_samples.reshape((-1, qubits_num))
+        pushed_samples = pushed_samples.reshape((-1, qubits_num))
         log_psi = self.log_amplitude(pushed_samples, wave_function_number, params, fwd, qubits_num)
         log_psi = log_psi.reshape((-1, 4))
         log = log_psi + log_weights
