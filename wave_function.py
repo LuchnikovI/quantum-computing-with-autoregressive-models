@@ -181,25 +181,45 @@ class WaveFunctionParallel(WaveFunction):
              in_axes=(None, None, 0, None, 0, None, None),
              out_axes=0,
              static_broadcasted_argnums=(0, 1, 3, 5, 6))
-    def sample(self, *args, **kwargs):
-        super().sample(*args, **kwargs)
+    def sample(self,
+               num_of_samples: int,
+               key: PRNGKey,
+               wave_function_number: int,
+               params: List[Params],
+               fwd: NNet,
+               qubits_num: int):
+        return super().sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, 0, None, 0, None, None),
              out_axes=0,
              static_broadcasted_argnums=(0, 2, 4, 5))
-    def log_amplitude(*args, **kwargs):
-        super().log_amplitude(*args, **kwargs)
+    def log_amplitude(self,
+                      sample: jnp.ndarray,
+                      wave_function_number: int,
+                      params: List[Params],
+                      fwd: NNet,
+                      qubits_num: int):
+        return super().log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, None, 0, None, 0, None, None),
              out_axes=0,
              static_broadcasted_argnums=(0, 2, 4, 5))
-    def two_qubit_gate_log_amplitude(*args, **kwargs):
-        super().two_qubit_gate_log_amplitude(*args, **kwargs)
+    def two_qubit_gate_log_amplitude(self,
+                                     gate: jnp.ndarray,
+                                     sides: List[int],
+                                     sample: jnp.ndarray,
+                                     wave_function_number: int,
+                                     params: List[Params],
+                                     fwd: NNet,
+                                     qubits_num: int):
+        return super().two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(0, 0),
              out_axes=0)
-    def bracket(*args, **kwargs):
-        super().bracket(*args, **kwargs)
+    def bracket(self,
+                log_bra: jnp.ndarray,
+                log_ket: jnp.ndarray):
+        return super().bracket(log_bra, log_ket)
