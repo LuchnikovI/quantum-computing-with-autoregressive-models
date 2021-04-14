@@ -162,7 +162,7 @@ class ExactQCWrapper:
 
 
 class NeuralTensorQCWrapper:
-    """Wrapper for combined neural-tensor networks based quantum computation.
+    """Wrapper for combined neural-tensor networks based simulation of quantum circuits.
 
     Args:
         number_of_heads: int number, number of heads in MultiHeadAttention
@@ -186,7 +186,7 @@ class NeuralTensorQCWrapper:
         self.opt_state = None
 
     def set_circuit(self, mpo, circ):
-        """Adds gate to the circuit.
+        """Set mpo representation of a circuit
 
         Args:
             mpo: mpo representation of a circuit
@@ -204,18 +204,20 @@ class NeuralTensorQCWrapper:
             lambda x: jnp.stack(self.num_devices * [x]), opt.init(one_device_params)
         )
 
-    def train_qc(self, epoch_size, iters, num_of_samples):
+    def train_qc(self, epoch_size, iters, num_of_samples, m=0):
         """Calculates output of a quantum circuit.
 
         Args:
             epoch_size: int, size of one epoch
             iters: int, number of epoch
-            number_of_samples: int, number of samples per iteration"""
+            number_of_samples: int, number of samples per iteration
+            m: momentum"""
 
         gate_time = time.time()
         self.key = random.split(self.key)[0]
         keys = random.split(self.key, self.num_devices)
         loss_dynamics = []
+        loss_aggregation = 0.
         for i in tqdm(range(iters)):
             compilation_time = time.time()
             loss, self.params, keys, self.opt_state = self.wave_func.train_epoch_circ(
@@ -230,9 +232,10 @@ class NeuralTensorQCWrapper:
                 self.fwd,
                 self.length,
             )
-            loss_dynamics.append(loss[0])
+            loss_aggregation = m*loss_aggregation + (1-m)*loss[0]
+            loss_dynamics.append(loss_aggregation)
             if i == 0:
-                print(", Compilation time = " + str(time.time() - compilation_time))
+                print(', Compilation time = {}'.format(time.time() - compilation_time))
         opt_state = self.opt.init(
             jax.tree_util.tree_map(lambda x: x[0], self.params[1])
         )
@@ -241,9 +244,9 @@ class NeuralTensorQCWrapper:
         )
         self.opt_state = opt_state
         self.params[0] = self.params[1]
-        self.training_data.append({"loss_dynamics": loss_dynamics})
-        print("Training time = " + str(time.time() - gate_time))
-        print("Loss value = " + str(loss[0]))
+        self.training_data.append({'loss_dynamics': loss_dynamics})
+        print('Training time = {}'.format(time.time() - gate_time))
+        print('Loss value = {}'.format(loss[0]))
         with open("trained_circuit" + ".pickle", "wb") as f:
             pickle.dump(self.params[0], f)
 
