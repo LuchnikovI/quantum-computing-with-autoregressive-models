@@ -194,13 +194,13 @@ class WaveFunctionParallel(WaveFunction):
              in_axes=(None, 0, None, 0, None, None),
              out_axes=0,
              static_broadcasted_argnums=(0, 2, 4, 5))
-    def _log_amplitude(self,
+    def log_amplitude(self,
                       sample: jnp.ndarray,
                       wave_function_number: int,
                       params: List[Params],
                       fwd: NNet,
                       qubits_num: int):
-        return super().log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
+        return super(WaveFunction, self).log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, None, None, 0, None, 0, None, None),
