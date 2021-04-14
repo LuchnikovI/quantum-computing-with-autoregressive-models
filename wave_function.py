@@ -15,6 +15,7 @@ from functools import partial
 
 class WaveFunction:
     """Autoregressive wave function based on self attention
+
     Args:
         number_of_heads: number of heads in MultiHeadAttention
         kqv_size: size of key, value and query for all layers
@@ -151,7 +152,7 @@ class WaveFunction:
         log_psi = log_psi.reshape((-1, 4))
         log = log_psi + log_weights
         max_log = jnp.real(log).max(-1, keepdims=True)
-        log = jnp.log(jnp.exp(log - max_log).sum(-1)) + max_log
+        log = jnp.log(jnp.exp(log - max_log).sum(-1)) + max_log[..., -1]
         return log
 
     def bracket(self,
