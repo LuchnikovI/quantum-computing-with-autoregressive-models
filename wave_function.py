@@ -194,7 +194,7 @@ class WaveFunctionParallel(WaveFunction):
              in_axes=(None, 0, None, 0, None, None),
              out_axes=0,
              static_broadcasted_argnums=(0, 2, 4, 5))
-    def log_amplitude(self,
+    def _log_amplitude(self,
                       sample: jnp.ndarray,
                       wave_function_number: int,
                       params: List[Params],
