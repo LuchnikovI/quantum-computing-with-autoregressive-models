@@ -152,7 +152,7 @@ class WaveFunction:
         log_psi = log_psi.reshape((-1, 4))
         log = log_psi + log_weights
         #max_log = jnp.real(log).max(-1, keepdims=True)
-        #log = jnp.log(jnp.exp(log - max_log).sum(-1)) + max_log[..., 0]
+        log = jnp.log(jnp.exp(log).sum(-1))
         return log
 
     def bracket(self,
