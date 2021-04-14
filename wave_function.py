@@ -200,7 +200,7 @@ class WaveFunctionParallel(WaveFunction):
                       params: List[Params],
                       fwd: NNet,
                       qubits_num: int):
-        return super(WaveFunction, self).log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
+        return super(WaveFunctionParallel, self).log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, None, None, 0, None, 0, None, None),
@@ -214,7 +214,7 @@ class WaveFunctionParallel(WaveFunction):
                                      params: List[Params],
                                      fwd: NNet,
                                      qubits_num: int):
-        return super().two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
+        return super(WaveFunctionParallel, self).two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(0, 0),
