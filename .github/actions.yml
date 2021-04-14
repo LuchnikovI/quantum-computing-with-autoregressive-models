@@ -1,0 +1,52 @@
+name: actions
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9 
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Set up Poetry
+        run: pip install poetry 
+      
+      - name: Install dependencies
+        run: poetry install
+        
+      - name: Run tests
+        run: poetry run pytest tests
+        
+  lint:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9 
+        uses: actions/setup-python@v2
+        with:
+         python-version: 3.9
+
+      - name: Set up Poetry
+        run: pip install poetry 
+      
+      - name: Install dependencies
+        run: poetry install
+        
+      - name: Run linter
+        run: poetry run pylint qucomp-autoreg
+
+      # Runs a set of commands using the runners shell
+      - name: Run a multi-line script
+        run: |
+          echo Add other actions to build,
+          echo test, and deploy your project.
