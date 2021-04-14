@@ -218,8 +218,9 @@ class WaveFunctionParallel(WaveFunction):
         return super().two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
-             in_axes=(0, 0),
-             out_axes=0)
+             in_axes=(None, 0, 0),
+             out_axes=0,
+             static_broadcasted_argnums=(0,))
     def parallel_bracket(self,
                 log_bra: jnp.ndarray,
                 log_ket: jnp.ndarray):
