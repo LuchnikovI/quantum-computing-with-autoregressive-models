@@ -89,9 +89,9 @@ class AttentionEncoder(hk.Module):
 
         # final linear layer
         x = hk.Linear(
-            self.out_size,
-            w_init=hk.initializers.TruncatedNormal(),
-            b_init=hk.initializers.TruncatedNormal(),
-        )(x)
+            self.out_size, 
+            w_init = hk.initializers.TruncatedNormal(stddev=1e-3),
+            b_init = hk.initializers.Constant(jnp.array([10,0.,0.,0.]))
+            )(x)
 
         return x
