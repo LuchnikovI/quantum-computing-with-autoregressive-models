@@ -90,7 +90,7 @@ class AttentionEncoder(hk.Module):
         # final linear layer
         x = hk.Linear(
             self.out_size, 
-            w_init= hk.initializers.TruncatedNormal(),
+            w_init = hk.initializers.TruncatedNormal(),
             b_init = hk.initializers.TruncatedNormal()
             )(x)
 
