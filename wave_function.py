@@ -171,7 +171,7 @@ class WaveFunction:
     
     @partial(pmap,
              in_axes=(None, 0, 0, None, None, None, 0),
-             out_axis=0,
+             out_axes=0,
              static_broadcasted_argnums=(0, 3, 4, 5))
     def nat_grad(self, params, samples, wave_function_number, fwd, qubits_num, tangents):
         @partial(grad, argnums=0)
