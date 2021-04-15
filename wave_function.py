@@ -170,7 +170,7 @@ class WaveFunction:
         return jnp.exp(log_ket - log_bra).mean()
 
     def nat_grad(self, params, samples, wave_function_number, fwd, qubits_num, tangents):
-        @partial(grad, 0)
+        @partial(grad, argnums=0)
         def grad_dist(x, y):
             log_ket = self.log_amplitude(samples, wave_function_number, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, wave_function_number, y, fwd, qubits_num)
