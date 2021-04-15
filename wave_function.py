@@ -205,7 +205,7 @@ class WaveFunction:
         Returns:
             (num_of_samples, length) array like"""
 
-        return super().sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
+        return self.sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, 0, None, 0, None, None),
@@ -229,7 +229,7 @@ class WaveFunction:
         Returns:
             log(wave function)"""
 
-        return super().log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
+        return self.log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, None, None, 0, None, 0, None, None),
@@ -257,7 +257,7 @@ class WaveFunction:
         Returns:
             two array like (num_of_samples,) -- log of absolut value and phase"""
 
-        return super().two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
+        return self.two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
              in_axes=(None, 0, 0),
@@ -275,4 +275,4 @@ class WaveFunction:
         Returns:
             array like of shape (1,)"""
 
-        return super().bracket(log_bra, log_ket)
+        return self.bracket(log_bra, log_ket)
