@@ -169,14 +169,17 @@ class WaveFunction:
 
         return jnp.exp(log_ket - log_bra).mean()
 
+    def parallel_params(self, params: List[Params]) -> List[Params]:
+        """Transforms set of parameters into distributed set of parameters
 
-class WaveFunctionParallel(WaveFunction):
+        Args:
+            params: NN parameters
 
-    def init(self, key: PRNGKey) -> Tuple[List[Params], NNet]:
-        params, fwd = super().init(key)
+        Returns:
+            distributed NN parameters"""
+
         num_devices = jax.local_device_count()
-        params = jax.tree_util.tree_map(lambda x: jnp.stack([x] * num_devices), params)
-        return params, fwd
+        return jax.tree_util.tree_map(lambda x: jnp.stack([x] * num_devices), params)
 
     @partial(pmap,
              in_axes=(None, None, 0, None, 0, None, None),
@@ -189,6 +192,19 @@ class WaveFunctionParallel(WaveFunction):
                params: List[Params],
                fwd: NNet,
                qubits_num: int):
+        """Return samples from the wave function (distributed)
+    
+        Args:
+            num_of_samples: number of samples
+            key: PRNGKey
+            wave_function_number: number of a wave function to sample from
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+    
+        Returns:
+            (num_of_samples, length) array like"""
+
         return super().sample(num_of_samples, key, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
@@ -201,6 +217,18 @@ class WaveFunctionParallel(WaveFunction):
                       params: List[Params],
                       fwd: NNet,
                       qubits_num: int):
+        """Return log(wave function) for a given sample (distributed)
+    
+        Args:
+            sample: (num_of_samples, length) array like
+            wave_function_number: number of a wave function to evaluate
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+    
+        Returns:
+            log(wave function)"""
+
         return super().log_amplitude(sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
@@ -215,6 +243,20 @@ class WaveFunctionParallel(WaveFunction):
                                      params: List[Params],
                                      fwd: NNet,
                                      qubits_num: int):
+        """Return log(gate.dot(wave function)) for a given sample
+
+        Args:
+            gate: (2, 2, 2, 2) array like
+            sides: list with two integers, sides where to apply a gate
+            sample: (num_of_samples, length) array like
+            wave_function_number: number of a wave function to evaluate
+            params: parameters
+            fwd: network
+            qubits_num: number of qubits
+
+        Returns:
+            two array like (num_of_samples,) -- log of absolut value and phase"""
+
         return super().two_qubit_gate_log_amplitude(gate, sides, sample, wave_function_number, params, fwd, qubits_num)
 
     @partial(pmap,
@@ -224,4 +266,13 @@ class WaveFunctionParallel(WaveFunction):
     def parallel_bracket(self,
                 log_bra: jnp.ndarray,
                 log_ket: jnp.ndarray):
+        """Calculates <psi|psi>
+
+        Args:
+            log_bra: array like of shape (bs,)
+            log_ket: array_like of shape (bs,)
+
+        Returns:
+            array like of shape (1,)"""
+
         return super().bracket(log_bra, log_ket)
