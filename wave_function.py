@@ -1,6 +1,6 @@
 from typing import Tuple, List
 import jax.numpy as jnp
-from jax import random, pmap
+from jax import random, pmap, grad, jvp
 import jax
 import haiku as hk
 from attention import AttentionEncoder
@@ -168,6 +168,15 @@ class WaveFunction:
             array like of shape (1,)"""
 
         return jnp.exp(log_ket - log_bra).mean()
+
+    def nat_grad(self, params, samples, wave_function_number, fwd, qubits_num, tangents):
+        def dist(x, y):
+            log_ket = self.log_amplitude(samples, wave_function_number, x, fwd, qubits_num)
+            log_bra = self.log_amplitude(samples, wave_function_number, y, fwd, qubits_num)
+            return 1 - jnp.abs(self.bracket(log_bra, log_ket)) ** 2
+        grad(dist, 0)
+        return jvp(lambda x: grad(dist, 0)(params, x), params, tangents)[1]
+        
 
     def parallel_params(self, params: List[Params]) -> List[Params]:
         """Transforms set of parameters into distributed set of parameters
