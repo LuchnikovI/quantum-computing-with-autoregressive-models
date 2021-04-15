@@ -174,7 +174,6 @@ class WaveFunction:
             log_ket = self.log_amplitude(samples, wave_function_number, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, wave_function_number, y, fwd, qubits_num)
             return 1 - jnp.abs(self.bracket(log_bra, log_ket)) ** 2
-        grad(dist, 0)
         return jvp(lambda x: grad(dist, 0)(params, x), params, tangents)[1]
         
 
