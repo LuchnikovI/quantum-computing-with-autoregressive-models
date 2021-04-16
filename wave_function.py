@@ -190,7 +190,10 @@ class WaveFunction:
                     params: Params,
                     fwd: NNet,
                     qubits_num: int):
-        return jax.jacrev(lambda params: self.log_amplitude(sample, params, fwd, qubits_num))(params)
+        def log_amplitude(params):
+            log_psi = self.log_amplitude(sample, params, fwd, qubits_num)
+            return jnp.real(log_psi), jnp.imag(log_psi)
+        return jax.jacrev(log_amplitude)(params)
 
     def parallel_params(self, params: Params) -> Params:
         """Transforms set of parameters into distributed set of parameters
