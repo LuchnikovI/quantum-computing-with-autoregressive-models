@@ -2,7 +2,7 @@ from typing import Tuple, List
 import jax.numpy as jnp
 from jax import random, pmap, grad, jvp
 import jax
-from jax.lax import pmean
+from jax.scipy.sparse.linalg import cg
 import haiku as hk
 from attention import AttentionEncoder
 from utils import (
@@ -179,7 +179,7 @@ class WaveFunction:
         def g(vec):
             Gvec = jvp(grad(dist), (params,), (vec,))[1]
             return jax.tree_util.tree_multimap(lambda x, y: x + eps*y, Gvec, vec)
-        return g(gradient)
+        return cg(g, gradient)[0]
         
 
     def parallel_params(self, params: Params) -> Params:
