@@ -164,8 +164,7 @@ class WaveFunction:
     @partial(pmap,
              in_axes=(None, 0, 0, None, None, 0),
              out_axes=0,
-             static_broadcasted_argnums=(0, 3, 4),
-             axis_name='device')
+             static_broadcasted_argnums=(0, 3, 4))
     def nat_grad(self,
                  params,
                  samples,
@@ -176,7 +175,7 @@ class WaveFunction:
         def dist(x):
             log_ket = self.log_amplitude(samples, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, params, fwd, qubits_num)
-            return 1 - jnp.abs(pmean(self.bracket(log_bra, log_ket), axis_name='device')) ** 2
+            return 1 - jnp.abs(self.bracket(log_bra, log_ket)) ** 2
         def g(vec):
             Gvec = jvp(grad(dist), (params,), (vec,))[1]
             return jax.tree_util.tree_multimap(lambda x, y: x + eps*y, Gvec, vec)
