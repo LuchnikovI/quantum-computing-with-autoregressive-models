@@ -170,7 +170,6 @@ class WaveFunction:
                  fwd,
                  qubits_num,
                  tangents):
-        @partial(grad, argnums=0)
         def dist(x):
             log_ket = self.log_amplitude(samples, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, params, fwd, qubits_num)
