@@ -169,12 +169,16 @@ class WaveFunction:
                  samples,
                  fwd,
                  qubits_num,
-                 tangents):
+                 gradient):
+        eps = 1e-6
         def dist(x):
             log_ket = self.log_amplitude(samples, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, params, fwd, qubits_num)
             return 1 - jnp.abs(self.bracket(log_bra, log_ket)) ** 2
-        return jvp(grad(dist), (params,), (tangents,))[1]
+        def g(vec):
+            Gvec = jvp(grad(dist), (params,), (vec,))[1]
+            return jax.tree_util.tree_multimap(lambda x, y: x + eps*y, Gvec, (vec,))
+        return g(gradient)
         
 
     def parallel_params(self, params: Params) -> Params:
