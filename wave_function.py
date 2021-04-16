@@ -180,7 +180,17 @@ class WaveFunction:
             Gvec = jvp(grad(dist), (params,), (vec,))[1]
             return jax.tree_util.tree_multimap(lambda x, y: x + eps*y, Gvec, vec)
         return cg(g, gradient, x0=gradient)[0]
-        
+    
+    @partial(pmap,
+             in_axes=(None, 0, 0, None, None),
+             out_axes=0,
+             static_broadcasted_argnums=(0, 3, 4))
+    def fisher_diag(self,
+                    sample: jnp.ndarray,
+                    params: Params,
+                    fwd: NNet,
+                    qubits_num: int):
+        return jax.jacrev(lambda params: self.log_amplitude(sample, params, fwd, qubits_num))(params)
 
     def parallel_params(self, params: Params) -> Params:
         """Transforms set of parameters into distributed set of parameters
