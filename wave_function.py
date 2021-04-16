@@ -171,7 +171,7 @@ class WaveFunction:
                  fwd,
                  qubits_num,
                  gradient):
-        eps = 1e-3
+        eps = 1e-2
         def dist(x):
             log_ket = self.log_amplitude(samples, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, params, fwd, qubits_num)
