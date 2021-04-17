@@ -171,8 +171,8 @@ class WaveFunction:
                  fwd: NNet,
                  qubits_num: int,
                  gradient: Params,
-                 maxiter=None,
-                 eps=1e-2):
+                 maxiter: int,
+                 eps: float):
         def dist(x):
             log_ket = self.log_amplitude(samples, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, params, fwd, qubits_num)
