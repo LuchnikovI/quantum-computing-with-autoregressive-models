@@ -180,7 +180,7 @@ class WaveFunction:
         def g(vec):
             Gvec = jvp(grad(dist), (params,), (vec,))[1]
             return jax.tree_util.tree_multimap(lambda x, y: x + eps*y, Gvec, vec)
-        return cg(g, gradient, x0=gradient, maxiter=maxiter)[0]
+        return cg(g, gradient, maxiter=maxiter)[0]
     
     '''@partial(pmap,
              in_axes=(None, 0, 0, None, None),
