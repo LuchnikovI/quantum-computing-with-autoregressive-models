@@ -166,12 +166,13 @@ class WaveFunction:
              out_axes=0,
              static_broadcasted_argnums=(0, 3, 4))
     def nat_grad(self,
-                 params,
-                 samples,
-                 fwd,
-                 qubits_num,
-                 gradient):
-        eps = 1e-2
+                 params: Params,
+                 samples: jnp.ndarray,
+                 fwd: NNet,
+                 qubits_num: int,
+                 gradient: Params,
+                 maxiter=None,
+                 eps=1e-2):
         def dist(x):
             log_ket = self.log_amplitude(samples, x, fwd, qubits_num)
             log_bra = self.log_amplitude(samples, params, fwd, qubits_num)
@@ -179,10 +180,9 @@ class WaveFunction:
         def g(vec):
             Gvec = jvp(grad(dist), (params,), (vec,))[1]
             return jax.tree_util.tree_multimap(lambda x, y: x + eps*y, Gvec, vec)
-        #return cg(g, gradient, x0=gradient)[0]
-        return g(gradient)
+        return cg(g, gradient, x0=gradient, maxiter=maxiter)[0]
     
-    @partial(pmap,
+    '''@partial(pmap,
              in_axes=(None, 0, 0, None, None),
              out_axes=0,
              static_broadcasted_argnums=(0, 3, 4))
@@ -194,7 +194,7 @@ class WaveFunction:
         def log_amplitude(params):
             log_psi = self.log_amplitude(sample, params, fwd, qubits_num)
             return jnp.real(log_psi), jnp.imag(log_psi)
-        return jax.jacrev(log_amplitude)(params)
+        return jax.jacrev(log_amplitude)(params)'''
 
     def parallel_params(self, params: Params) -> Params:
         """Transforms set of parameters into distributed set of parameters
