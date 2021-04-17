@@ -162,9 +162,9 @@ class WaveFunction:
         return jnp.exp(log_ket - log_bra).mean()
     
     @partial(pmap,
-             in_axes=(None, 0, 0, None, None, 0),
+             in_axes=(None, 0, 0, None, None, 0, None, None),
              out_axes=0,
-             static_broadcasted_argnums=(0, 3, 4))
+             static_broadcasted_argnums=(0, 3, 4, 6, 7))
     def nat_grad(self,
                  params: Params,
                  samples: jnp.ndarray,
